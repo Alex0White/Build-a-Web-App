@@ -5,8 +5,8 @@ func main() {
 }
 
 type User struct {
-	username float64
-	password float64
+	username string
+	password string
 }
 type Note struct {
 	username string
@@ -15,7 +15,7 @@ type Note struct {
 }
 type Permissions struct {
 	noteId   int
-	username int
+	username string
 	read     bool
 	write    bool
 }
