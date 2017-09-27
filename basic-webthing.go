@@ -1,12 +1,13 @@
 package main
 
 import (
-	"time"
-	"net"
 	"fmt"
+	"log"
+	"net/http"
 	"strings"
+)
 
-func sayhelloName(w http.ResponseWriter, r *http.Request){
+func sayhelloName(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	fmt.Println("path", r.URL.Path)
 	fmt.Println("scheme", r.URL.Scheme)
@@ -17,6 +18,15 @@ func sayhelloName(w http.ResponseWriter, r *http.Request){
 	}
 	fmt.Fprintf(w, "Hello Alex!")
 }
+
+func main() {
+	http.HandleFunc("/", sayhelloName)
+	err := http.ListenAndServe(":9090", nil)
+	if err != nil {
+		log.Fatal("ListenAndServe:", err)
+	}
+}
+
 /*
 func (srv *Server) Serve(l net.Listener) error {
 defer l.Close()
@@ -39,7 +49,7 @@ for{
 		}
 		return e
 	}
-	tempDelay = 0 
+	tempDelay = 0
 	c, err := srv.newConn(rw)
 	if err != nil {
 		continue
@@ -48,12 +58,3 @@ for{
 }
 }
 */
-
-func main() {
-	http.HandleFunc("/", sayhelloName)
-	err := http.ListenAndServe(":9090", nil)
-	if err != nil {
-		log.Fatal("ListenAndServe:", err)
-	}
-}
-	
