@@ -8,6 +8,41 @@ import (
 	"strings"
 )
 
+func addNewUser(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	decoder := json.NewDecoder(r.Body)
+	data := struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}{}
+	err := decoder.Decode(&data)
+
+	if err != nil {
+		panic(err)
+	}
+	//addUser(data.Username, data.Password) //adds new user to the database
+	fmt.Println(data.Username)
+	fmt.Println(data.Password)
+	defer r.Body.Close()
+
+}
+func addNewNote(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	decoder := json.NewDecoder(r.Body)
+	data := struct {
+		NoteID   int    `json:"noteid"` //neeeds to be automatically generated
+		Username string `json:"username"`
+		Note     string `json:"note"`
+	}{}
+	err := decoder.Decode(&data)
+
+	if err != nil {
+		panic(err)
+	}
+	//addNote(data.NoteID, data.Username, data.Note) //adds new note to the database //todo add permissions also
+	defer r.Body.Close()
+}
+
 func sayhelloName(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	fmt.Println("path", r.URL.Path)
@@ -20,17 +55,6 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello Alex!")
 }
 
-func sayhelloConnor(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	fmt.Println("path", r.URL.Path)
-	fmt.Println("scheme", r.URL.Scheme)
-	fmt.Println(r.Form["url_long"])
-	for k, v := range r.Form {
-		fmt.Println("key:", k)
-		fmt.Println("val:", strings.Join(v, ""))
-	}
-	fmt.Fprintf(w, "Hello Connor!")
-}
 func sayhelloPost(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	fmt.Println("path", r.URL.Path)
@@ -52,15 +76,14 @@ func sayhelloPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(data)
+	fmt.Println(data.Message)
 	defer r.Body.Close()
 	fmt.Fprintf(w, string(data.Message))
 }
 
 func main() {
-	http.HandleFunc("/", sayhelloName)
-	http.HandleFunc("/c", sayhelloConnor)
-	http.HandleFunc("/newnote", sayhelloPost)
+	http.HandleFunc("/adduser", addNewUser)
+	http.HandleFunc("/addnote", addNewNote)
 	err := http.ListenAndServe(":9090", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
