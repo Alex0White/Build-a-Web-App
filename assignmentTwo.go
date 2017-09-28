@@ -11,6 +11,18 @@ func main() {
 	prepareDatabase()
 
 }
+func addNote(newNote Note) {
+
+}
+func addUser(newUser User) {
+	db, err := sql.Open("postgres", "user=postgres password=admin dbname=webAppDatabase sslmode=disable")
+	//check if username is already taken
+	_, err = db.Exec("INSERT INTO StudentsTable(username, password) VALUES($1,$2)", newUser.username, newUser.password)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
 
 func prepareDatabase() {
 	db, err := sql.Open("postgres", "user=postgres password=admin dbname=webAppDatabase sslmode=disable")
