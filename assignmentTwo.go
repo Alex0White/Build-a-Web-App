@@ -12,12 +12,18 @@ func main() {
 
 }
 func addNote(NoteId int, username string, note string) {
+	db, err := sql.Open("postgres", "user=postgres password=admin dbname=webAppDatabase sslmode=disable")
+	//check if username is already taken
+	_, err = db.Exec("INSERT INTO NotesTable(noteId, username, password) VALUES($1,$2, $3)", NoteId, username, note)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 }
 func addUser(username string, password string) {
 	db, err := sql.Open("postgres", "user=postgres password=admin dbname=webAppDatabase sslmode=disable")
 	//check if username is already taken
-	_, err = db.Exec("INSERT INTO StudentsTable(username, password) VALUES($1,$2)", username, password)
+	_, err = db.Exec("INSERT INTO UsersTable(username, password) VALUES($1,$2)", username, password)
 	if err != nil {
 		log.Fatal(err)
 	}
