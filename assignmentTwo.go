@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 
@@ -11,14 +12,16 @@ import (
 )
 
 func main() {
-	prepareDatabase()
+	//prepareDatabase()
 	//viewUsers()
 	//viewNotes()
 	//viewPermissions()
-	//uncomment to reset database
-
+	//http.HandleFunc("/", HomePage)
+	//http.HandleFunc("/", login)
+	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
 	http.HandleFunc("/addnote", addNewNote)
+	http.HandleFunc("/changepermissions", changeNewPermissions)
 	err := http.ListenAndServe(":9090", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
@@ -26,6 +29,74 @@ func main() {
 	//viewUsers()
 
 }
+
+func HomePage(w http.ResponseWriter, r *http.Request) {
+
+	// t, err := template.ParseFiles("homepage.html") //parse the html file homepage.html
+
+	// if err != nil { // if there is an error
+	// 	log.Print("template parsing error: ", err) // log it
+	// }
+	// type PageVariables struct {
+	// 	Test string
+	// }
+	// HomePageVars := PageVariables{ //store the date and time in a struct
+	// 	Test: "hey",
+	// }
+	// err = t.Execute(w, HomePageVars) //execute the template and pass it the HomePageVars struct to fill in the gaps
+	// if err != nil {                  // if there is an error
+	// 	log.Print("template executing error: ", err) //log it
+	// }
+}
+
+func login(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("method:", r.Method) //get request method
+	if r.Method == "GET" {
+		t, _ := template.ParseFiles("homepage.html")
+		t.Execute(w, nil)
+	} else {
+		
+
+		r.ParseForm()
+
+		// fmt.Println("username:", r.Form["username"])
+		// fmt.Println("password:", r.Form["password"])
+
+		db, _ := sql.Open("postgres", "user=postgres password=admin dbname=webAppDatabase sslmode=disable")
+		rows, err := db.Query("SELECT * FROM UsersTable ")
+		if err != nil {
+			log.Fatal(err)
+		}
+	
+		var (
+			Username string
+			Password string
+		)
+	
+		for rows.Next() {
+		
+			err = rows.Scan(&Username, &Password)
+			if r.Form["username"][0]==Username{
+				if r.Form["password"][0]==Password{
+					fmt.Println("Logged in!")
+					t, _ := template.ParseFiles("homepage.html")
+					t.Execute(w, nil)
+					break
+
+				} else{
+					fmt.Println("Incorrect Password!")
+					break
+				}
+			}
+		}
+		
+
+
+	}
+}
+
+
+
 func addNote(NoteId int, username string, note string) { //adds a new note to the database
 	db, err := sql.Open("postgres", "user=postgres password=admin dbname=webAppDatabase sslmode=disable")
 	//check if username is already taken
@@ -40,20 +111,49 @@ func addNote(NoteId int, username string, note string) { //adds a new note to th
 
 }
 func addUser(username string, password string) { //adds a new user to the database
+
 	db, err := sql.Open("postgres", "user=postgres password=admin dbname=webAppDatabase sslmode=disable")
 	//check if username is already taken
 	_, err = db.Exec("INSERT INTO UsersTable(username, password) VALUES($1,$2)", username, password)
 	if err != nil {
 		log.Fatal(err)
 	}
+	viewUsers()
 
 }
-func changePermissions(noteId int, username string, read string, write string) { //needs to be change permissions, if the user is already associated with the note
+
+func changePermissions(noteId int, username string, read bool, write bool) { //needs to be change permissions, if the user is already associated with the note
+	updated := false
 	db, err := sql.Open("postgres", "user=postgres password=admin dbname=webAppDatabase sslmode=disable")
-	_, err = db.Exec("INSERT INTO PermissionsTable(noteId, username, read, write) VALUES($1,$2,$3,$4)", noteId, username, read, write)
+	rows, err := db.Query("SELECT * FROM PermissionsTable ")
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	var (
+		NoteId   int
+		Username string
+		Read     bool
+		Write    bool
+	)
+
+	for rows.Next() {
+
+		err = rows.Scan(&noteId, &username, &Read, &Write)
+		if noteId == NoteId && username == Username { //if user already has permissions associated with it it needs to be updated rather than inserted
+			//update table
+			updated = true
+
+		}
+
+	}
+	if !updated {
+		_, err = db.Exec("INSERT INTO PermissionsTable(noteId, username, read, write) VALUES($1,$2,$3,$4)", noteId, username, read, write)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 }
 
 func prepareDatabase() {
@@ -92,23 +192,24 @@ func prepareDatabase() {
 
 }
 func addNewUser(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	decoder := json.NewDecoder(r.Body)
-	data := struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}{}
-	err := decoder.Decode(&data)
+	if r.Method == "GET" {
+		t, _ := template.ParseFiles("addaccount.html")
+		t.Execute(w, nil)
+	} else {
 
-	if err != nil {
-		panic(err)
+		r.ParseForm()
+
+		addUser(r.Form["username"][0], r.Form["password"][0])
+		t, _ := template.ParseFiles("homepage.html")
+		t.Execute(w, nil)
+
+		//fmt.Println("password:", r.Form["password"])
+
+		//defer r.Body.Close()
+
 	}
-	addUser(data.Username, data.Password) //adds new user to the database
-	//fmt.Println(data.Username)
-	//fmt.Println(data.Password)
-	defer r.Body.Close()
-
 }
+
 func addNewNote(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	decoder := json.NewDecoder(r.Body)
@@ -123,6 +224,25 @@ func addNewNote(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	addNote(data.NoteId, data.Username, data.Note) //adds new note to the database
+
+	defer r.Body.Close()
+
+}
+func changeNewPermissions(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	decoder := json.NewDecoder(r.Body)
+	data := struct {
+		NoteId   int    `json:"noteid"`
+		Username string `json:"username"`
+		Read     bool   `json:"read`
+		Write    bool   `json:write`
+	}{}
+	err := decoder.Decode(&data)
+
+	if err != nil {
+		panic(err)
+	}
+	changePermissions(data.NoteId, data.Username, data.Read, data.Write)
 
 	defer r.Body.Close()
 
