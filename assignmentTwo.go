@@ -212,20 +212,26 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 
 func addNewNote(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	decoder := json.NewDecoder(r.Body)
-	data := struct {
-		NoteId   int    `json:"noteid"`
-		Username string `json:"username"`
-		Note     string `json:"note`
-	}{}
-	err := decoder.Decode(&data)
-
-	if err != nil {
-		panic(err)
+	//fmt.Println("method:", r.Method) //get request method
+	if r.Method == "GET" {
+		t, _ := template.ParseFiles("createnote.html")
+	
+		t.Execute(w, nil)
 	}
-	addNote(data.NoteId, data.Username, data.Note) //adds new note to the database
+	// decoder := json.NewDecoder(r.Body)
+	// data := struct {
+	// 	NoteId   int    `json:"noteid"`
+	// 	Username string `json:"username"`
+	// 	Note     string `json:"note`
+	// }{}
+	// err := decoder.Decode(&data)
 
-	defer r.Body.Close()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// addNote(data.NoteId, data.Username, data.Note) //adds new note to the database
+
+	// defer r.Body.Close()
 
 }
 func changeNewPermissions(w http.ResponseWriter, r *http.Request) {
