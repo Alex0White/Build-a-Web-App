@@ -20,7 +20,9 @@ func main() {
 	//http.HandleFunc("/", login)
 	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
-	http.HandleFunc("/addnote", addNewNote)
+	http.HandleFunc("/notes", viewNotes)
+	http.HandleFunc("/createnote", addNewNote)
+	http.HandleFunc("/search", searchNotes)
 	http.HandleFunc("/changepermissions", changeNewPermissions)
 	err := http.ListenAndServe(":9090", nil)
 	if err != nil {
@@ -52,7 +54,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 func login(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("method:", r.Method) //get request method
 	if r.Method == "GET" {
-		t, _ := template.ParseFiles("homepage.html")
+		t, _ := template.ParseFiles("login.html")
 		t.Execute(w, nil)
 	} else {
 		
@@ -79,7 +81,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 			if r.Form["username"][0]==Username{
 				if r.Form["password"][0]==Password{
 					fmt.Println("Logged in!")
-					t, _ := template.ParseFiles("homepage.html")
+					t, _ := template.ParseFiles("home.html")
 					t.Execute(w, nil)
 					break
 
@@ -209,6 +211,15 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 }
+func searchNotes(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	//fmt.Println("method:", r.Method) //get request method
+	if r.Method == "GET" {
+		t, _ := template.ParseFiles("search.html")
+	
+		t.Execute(w, nil)
+	}
+}
 
 func addNewNote(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
@@ -275,7 +286,17 @@ func viewUsers() {
 
 	}
 }
-func viewNotes() {
+func viewNotes(w http.ResponseWriter, r *http.Request) {
+
+	r.ParseForm()
+	//fmt.Println("method:", r.Method) //get request method
+	if r.Method == "GET" {
+		t, _ := template.ParseFiles("notes.html")
+	
+		t.Execute(w, nil)
+	}
+
+
 	db, _ := sql.Open("postgres", "user=postgres password=admin dbname=webAppDatabase sslmode=disable")
 	rows, err := db.Query("SELECT * FROM NotesTable ")
 	if err != nil {
