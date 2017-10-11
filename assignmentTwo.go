@@ -38,7 +38,7 @@ func main() {
 	
 	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
-	http.HandleFunc("/notes", viewNotes)
+	//http.HandleFunc("/notes", viewNotes)
 	http.HandleFunc("/createnote", addNewNote)
 	http.HandleFunc("/search", searchNotes)
 	http.HandleFunc("/changepermissions", changeNewPermissions)
@@ -270,9 +270,9 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 }
 
 func addNewNote(w http.ResponseWriter, r *http.Request) {
-	var cookie,err = r.Cookie("username")
+	var username,err = r.Cookie("username")
 	if err==nil{
-		fmt.Println(cookie.Value)
+		fmt.Println(username.Value)
 
 	}else{
 		fmt.Println(err)
@@ -289,6 +289,13 @@ func addNewNote(w http.ResponseWriter, r *http.Request) {
 		
 		t, _ := template.ParseFiles("createnote.html")
 		t.Execute(w, nil)
+	}else{
+		addNote(1, username.Value, r.Form["note"][0])
+		
+		t, _ := template.ParseFiles("createnote.html")
+		t.Execute(w, nil)
+		viewNotes()
+		viewPermissions()
 	}
 
 	
@@ -349,15 +356,15 @@ func viewUsers() {
 
 	}
 }
-func viewNotes(w http.ResponseWriter, r *http.Request) {
+func viewNotes() {
 
-	r.ParseForm()
+	//r.ParseForm()
 	//fmt.Println("method:", r.Method) //get request method
-	if r.Method == "GET" {
-		t, _ := template.ParseFiles("notes.html")
+	// if r.Method == "GET" {
+	// 	t, _ := template.ParseFiles("notes.html")
 	
-		t.Execute(w, nil)
-	}
+	// 	t.Execute(w, nil)
+	// }
 
 
 	db, _ := sql.Open("postgres", "user=postgres password=admin dbname=webAppDatabase sslmode=disable")
@@ -377,7 +384,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		err = rows.Scan(&NoteId, &Username, &Note)
 		fmt.Println(Note)
 		fmt.Println(Username)
-		fmt.Println(Note)
+		
 
 	}
 
