@@ -7,17 +7,35 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	_ "sync"
+	_ "github.com/gorilla/mux"
+	_ "github.com/gorilla/securecookie"
+	
+
 
 	_ "github.com/lib/pq"
 )
 
+
+
 func main() {
-	//prepareDatabase()
+
+	
+	
+	
+    // Then, initialize the session manager
+   
+	//prepareDatabase() 
 	//viewUsers()
 	//viewNotes()
 	//viewPermissions()
 	//http.HandleFunc("/", HomePage)
 	//http.HandleFunc("/", login)
+	// var globalSessions *session.Manager
+	// // Then, initialize the session manager
+
+	//     globalSessions = NewManager("memory","gosessionid",3600)
+	
 	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
 	http.HandleFunc("/notes", viewNotes)
@@ -31,6 +49,8 @@ func main() {
 	//viewUsers()
 
 }
+
+
 
 func HomePage(w http.ResponseWriter, r *http.Request) {
 
@@ -51,12 +71,23 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 	// }
 }
 
+
 func login(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("method:", r.Method) //get request method
+	//fmt.Println("method:", r.Method) //get request method
+
+
+	
+	
 	if r.Method == "GET" {
-		t, _ := template.ParseFiles("login.html")
-		t.Execute(w, nil)
-	} else {
+	
+		
+		//fmt.Println(sess)
+		
+			//userName := sess.CAttr("UserName")
+			//fmt.Println(userName)
+			t, _ := template.ParseFiles("login.html")
+			t.Execute(w, nil)
+		} else {
 		
 
 		r.ParseForm()
@@ -81,6 +112,23 @@ func login(w http.ResponseWriter, r *http.Request) {
 			if r.Form["username"][0]==Username{
 				if r.Form["password"][0]==Password{
 					fmt.Println("Logged in!")
+					//sess := session.NewSession()
+					cookie1 := &http.Cookie{Name: "username", Value: (Username), HttpOnly: false}
+					http.SetCookie(w, cookie1)
+					var cookie,err = r.Cookie("username")
+					if err==nil{
+						fmt.Println(cookie.Value)
+
+					}else{
+						fmt.Println(err)
+					}
+					
+					
+					
+					
+					//sess.Set("username", r.Form["username"])
+					
+					
 					t, _ := template.ParseFiles("home.html")
 					t.Execute(w, nil)
 					break
@@ -222,13 +270,28 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 }
 
 func addNewNote(w http.ResponseWriter, r *http.Request) {
+	var cookie,err = r.Cookie("username")
+	if err==nil{
+		fmt.Println(cookie.Value)
+
+	}else{
+		fmt.Println(err)
+	}
+
+	
+	
+
+	//ess := session.Get(r)
 	r.ParseForm()
 	//fmt.Println("method:", r.Method) //get request method
 	if r.Method == "GET" {
+		
+		
 		t, _ := template.ParseFiles("createnote.html")
-	
 		t.Execute(w, nil)
 	}
+
+	
 	// decoder := json.NewDecoder(r.Body)
 	// data := struct {
 	// 	NoteId   int    `json:"noteid"`
@@ -342,8 +405,14 @@ func viewPermissions() {
 		fmt.Println(Write)
 
 	}
+	
+	}
 
-}
+	
+
+
+
+
 
 type User struct {
 	username string
@@ -360,3 +429,4 @@ type Permissions struct {
 	read     bool
 	write    bool
 }
+
