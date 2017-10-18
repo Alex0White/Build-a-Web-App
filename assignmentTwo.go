@@ -18,7 +18,7 @@ func main() {
 
 	// Then, initialize the session manager
 
-	//prepareDatabase()
+	prepareDatabase()
 	//viewUsers()
 	//viewNotes()
 	//viewPermissions()
@@ -127,14 +127,23 @@ func login(w http.ResponseWriter, r *http.Request) {
 func addNote(username string, note string) { //adds a new note to the database
 	db, err := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable")
 	//check if username is already taken
-	_, err = db.Exec("INSERT INTO NotesTable(username, note) VALUES($1,$2)", username, note)
+
+	query := "INSERT INTO NotesTable(username, note) VALUES($1,$2) RETURNING noteId" //returns the noteId so can be used when adding the note to the permissions table
+	stmt, err := db.Prepare(query)
 	if err != nil {
-		log.Fatal(err)
+	  log.Fatal(err)
 	}
-	_, err = db.Exec("INSERT INTO PermissionsTable(username, read, write) VALUES($1,$2,$3)", username, "true", "true") //adds read and write permissions to the user the created the note
+	defer stmt.Close()
+	var NoteId int
+	err = stmt.QueryRow(username, note).Scan(&NoteId)
 	if err != nil {
-		log.Fatal(err)
+	  log.Fatal(err)
 	}
+	fmt.Println(NoteId)
+	 _, err = db.Exec("INSERT INTO PermissionsTable(noteid, username, read, write) VALUES($1,$2,$3,$4)", NoteId, username, "true", "true") //adds read and write permissions to the user the created the note
+	 if err != nil {
+	 	log.Fatal(err)
+	 }
 
 }
 func addUser(username string, password string) { //adds a new user to the database
@@ -330,6 +339,8 @@ func viewUsers() {
 }
 func viewNotes(w http.ResponseWriter, r *http.Request) {
 
+	var username, err = r.Cookie("username")
+
 	r.ParseForm()
 	fmt.Println("method:", r.Method) //get request method
 	if r.Method == "GET" {
@@ -339,7 +350,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db, _ := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable")
-	rows, err := db.Query("SELECT * FROM NotesTable ")
+	rows, err := db.Query("SELECT * FROM PermissionsTable")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -347,19 +358,20 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 	var (
 		NoteId   int
 		Username string
-		Note     string
+		Read     bool
+		Write	bool
 	)
 	
-
+	fmt.Fprintf(w, "<h3>"+username.Value+":</h3><br>")
 
 	for rows.Next() {
 
-		err = rows.Scan(&NoteId, &Username, &Note)
-		fmt.Println(Note)
+		err = rows.Scan(&NoteId, &Username, &Read, &Write)
+		
 		fmt.Println(Username)
-		fmt.Println(NoteId)
-		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, Note+"<br>")
+		fmt.Println(Read)
+		
+		//fmt.Fprintf(w, Note+"<br>")
 
 	}
 
