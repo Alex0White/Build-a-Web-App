@@ -18,7 +18,7 @@ func main() {
 
 	// Then, initialize the session manager
 
-	prepareDatabase()
+	//prepareDatabase()
 	//viewUsers()
 	//viewNotes()
 	//viewPermissions()
@@ -80,7 +80,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		// fmt.Println("username:", r.Form["username"])
 		// fmt.Println("password:", r.Form["password"])
 
-		db, _ := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable port=5432")
+		db, _ := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable")
 		rows, err := db.Query("SELECT * FROM UsersTable ")
 		if err != nil {
 			log.Fatal(err)
@@ -349,6 +349,8 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		Username string
 		Note     string
 	)
+	
+
 
 	for rows.Next() {
 
@@ -356,6 +358,8 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(Note)
 		fmt.Println(Username)
 		fmt.Println(NoteId)
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, Note+"<br>")
 
 	}
 
