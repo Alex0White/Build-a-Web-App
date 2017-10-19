@@ -28,7 +28,7 @@ func main() {
 	// // Then, initialize the session manager
 
 	//     globalSessions = NewManager("memory","gosessionid",3600)
-
+	//http.Handle("/", http.FileServer(http.Dir("css/")))
 	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
 	http.HandleFunc("/notes", viewNotes)
@@ -63,6 +63,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
+	var loggedin=false
 	//fmt.Println("method:", r.Method) //get request method
 
 	if r.Method == "GET" {
@@ -96,6 +97,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 			err = rows.Scan(&Username, &Password)
 			if r.Form["username"][0] == Username {
 				if r.Form["password"][0] == Password {
+					loggedin=true
 					fmt.Println("Logged in!")
 					//sess := session.NewSession()
 					cookie1 := &http.Cookie{Name: "username", Value: (Username), HttpOnly: false}
@@ -110,15 +112,24 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 					//sess.Set("username", r.Form["username"])
 
-					t, _ := template.ParseFiles("home.html")
+					t, _ := template.ParseFiles("notes.html")
 					t.Execute(w, nil)
-					break
+					
+					
+				
 
 				} else {
 					fmt.Println("Incorrect Password!")
-					break
+					
+					
 				}
 			}
+			
+		}
+		if !loggedin {
+			fmt.Println("failed")
+			t, _ := template.ParseFiles("login.html")
+			t.Execute(w, nil)
 		}
 
 	}
@@ -236,7 +247,7 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 
 		addUser(r.Form["username"][0], r.Form["password"][0])
-		t, _ := template.ParseFiles("homepage.html")
+		t, _ := template.ParseFiles("login.html")
 		t.Execute(w, nil)
 
 		//fmt.Println("password:", r.Form["password"])
