@@ -138,7 +138,6 @@ func addNote(username string, note string) { //adds a new note to the database
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = db.Exec("INSERT INTO PermissionsTable(username, read, write, owner) VALUES($1,$2,$3,$4)", username, "true", "true", "true") //adds read and write permissions to the user the created the note
 	defer stmt.Close()
 	var NoteId int
 	err = stmt.QueryRow(username, note).Scan(&NoteId)
@@ -348,13 +347,20 @@ func viewUsers() {
 func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 	var username, err = r.Cookie("username")
+	fmt.Println(username)
+	
 
 	r.ParseForm()
 	fmt.Println("method:", r.Method) //get request method
+	//fmt.Fprintf(w, "<h3>"+username.Value+":</h3><br>")
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("notes.html")
+		
 
 		t.Execute(w, nil)
+		
+		
+	
 	}
 
 	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
@@ -370,14 +376,14 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		Write    bool
 	)
 
-	fmt.Fprintf(w, "<h3>"+username.Value+":</h3><br>")
+
 
 	for rows.Next() {
 
 		err = rows.Scan(&NoteId, &Username, &Read, &Write)
 
-		fmt.Println(Username)
-		fmt.Println(Read)
+		//fmt.Println(Username)
+		//fmt.Println(Read)
 
 		//fmt.Fprintf(w, Note+"<br>")
 
