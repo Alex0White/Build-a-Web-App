@@ -26,7 +26,7 @@ func main() {
 	// // Then, initialize the session manager
 
 	//     globalSessions = NewManager("memory","gosessionid",3600)
-
+	//http.Handle("/", http.FileServer(http.Dir("css/")))
 	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
 	http.HandleFunc("/notes", viewNotes)
@@ -61,6 +61,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
+	var loggedin = false
 	//fmt.Println("method:", r.Method) //get request method
 
 	if r.Method == "GET" {
@@ -94,6 +95,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 			err = rows.Scan(&Username, &Password)
 			if r.Form["username"][0] == Username {
 				if r.Form["password"][0] == Password {
+					loggedin = true
 					fmt.Println("Logged in!")
 					//sess := session.NewSession()
 					cookie1 := &http.Cookie{Name: "username", Value: (Username), HttpOnly: false}
@@ -108,15 +110,20 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 					//sess.Set("username", r.Form["username"])
 
-					t, _ := template.ParseFiles("home.html")
+					t, _ := template.ParseFiles("notes.html")
 					t.Execute(w, nil)
-					break
 
 				} else {
 					fmt.Println("Incorrect Password!")
-					break
+
 				}
 			}
+
+		}
+		if !loggedin {
+			fmt.Println("failed")
+			t, _ := template.ParseFiles("login.html")
+			t.Execute(w, nil)
 		}
 
 	}
@@ -125,11 +132,21 @@ func login(w http.ResponseWriter, r *http.Request) {
 func addNote(username string, note string) { //adds a new note to the database
 	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	//check if username is already taken
-	_, err = db.Exec("INSERT INTO NotesTable(username, note) VALUES($1,$2)", username, note)
+
+	query := "INSERT INTO NotesTable(username, note) VALUES($1,$2) RETURNING noteId" //returns the noteId so can be used when adding the note to the permissions table
+	stmt, err := db.Prepare(query)
 	if err != nil {
 		log.Fatal(err)
 	}
 	_, err = db.Exec("INSERT INTO PermissionsTable(username, read, write, owner) VALUES($1,$2,$3,$4)", username, "true", "true", "true") //adds read and write permissions to the user the created the note
+	defer stmt.Close()
+	var NoteId int
+	err = stmt.QueryRow(username, note).Scan(&NoteId)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(NoteId)
+	_, err = db.Exec("INSERT INTO PermissionsTable(noteid, username, read, write) VALUES($1,$2,$3,$4)", NoteId, username, "true", "true") //adds read and write permissions to the user the created the note
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -226,7 +243,7 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 
 		addUser(r.Form["username"][0], r.Form["password"][0])
-		t, _ := template.ParseFiles("homepage.html")
+		t, _ := template.ParseFiles("login.html")
 		t.Execute(w, nil)
 
 		//fmt.Println("password:", r.Form["password"])
@@ -330,6 +347,8 @@ func viewUsers() {
 }
 func viewNotes(w http.ResponseWriter, r *http.Request) {
 
+	var username, err = r.Cookie("username")
+
 	r.ParseForm()
 	fmt.Println("method:", r.Method) //get request method
 	if r.Method == "GET" {
@@ -347,17 +366,20 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 	var (
 		NoteId   int
 		Username string
-		Note     string
+		Read     bool
+		Write    bool
 	)
+
+	fmt.Fprintf(w, "<h3>"+username.Value+":</h3><br>")
 
 	for rows.Next() {
 
-		err = rows.Scan(&NoteId, &Username, &Note)
-		fmt.Println(Note)
+		err = rows.Scan(&NoteId, &Username, &Read, &Write)
+
 		fmt.Println(Username)
-		fmt.Println(NoteId)
-		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, Note+"<br>")
+		fmt.Println(Read)
+
+		//fmt.Fprintf(w, Note+"<br>")
 
 	}
 

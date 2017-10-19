@@ -1,7 +1,28 @@
 <style>
-        li {
-        display: inline;
-        }
+        ul {
+          list-style-type: none;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          background-color: #333;
+      }
+      
+      li {
+          float: left;
+      }
+      
+      li a {
+          display: block;
+          color: white;
+          text-align: center;
+          padding: 14px 16px;
+          text-decoration: none;
+      }
+      #textboxid
+  {
+    height:25px;
+    font-size:14pt;
+  }
         </style>
         <body>
                 <ul>
@@ -12,3 +33,9 @@
                 </ul>
         
 <h1>Search</h1>
+<form action="search" method="post">
+            <input id="textboxid"type="text" name="note" >
+            <br><br>
+            <input type="submit" value="Search">
+           
+</form> 
