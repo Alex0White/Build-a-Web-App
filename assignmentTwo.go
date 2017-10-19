@@ -8,8 +8,6 @@ import (
 	"log"
 	"net/http"
 	_ "sync"
-	//_ "github.com/gorilla/mux"
-	//_ "github.com/gorilla/securecookie"
 
 	_ "github.com/lib/pq"
 )
@@ -18,7 +16,7 @@ func main() {
 
 	// Then, initialize the session manager
 
-	//prepareDatabase()
+	prepareDatabase()
 	//viewUsers()
 	//viewNotes()
 	//viewPermissions()
@@ -80,7 +78,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		// fmt.Println("username:", r.Form["username"])
 		// fmt.Println("password:", r.Form["password"])
 
-		db, _ := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable")
+		db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432 ")
 		rows, err := db.Query("SELECT * FROM UsersTable ")
 		if err != nil {
 			log.Fatal(err)
@@ -125,13 +123,13 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func addNote(username string, note string) { //adds a new note to the database
-	db, err := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable")
+	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	//check if username is already taken
 	_, err = db.Exec("INSERT INTO NotesTable(username, note) VALUES($1,$2)", username, note)
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = db.Exec("INSERT INTO PermissionsTable(username, read, write) VALUES($1,$2,$3)", username, "true", "true") //adds read and write permissions to the user the created the note
+	_, err = db.Exec("INSERT INTO PermissionsTable(username, read, write, owner) VALUES($1,$2,$3,$4)", username, "true", "true", "true") //adds read and write permissions to the user the created the note
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -139,7 +137,7 @@ func addNote(username string, note string) { //adds a new note to the database
 }
 func addUser(username string, password string) { //adds a new user to the database
 
-	db, err := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable")
+	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	//check if username is already taken
 	_, err = db.Exec("INSERT INTO UsersTable(username, password) VALUES($1,$2)", username, password)
 	if err != nil {
@@ -149,9 +147,9 @@ func addUser(username string, password string) { //adds a new user to the databa
 
 }
 
-func changePermissions(noteId int, username string, read bool, write bool) { //needs to be change permissions, if the user is already associated with the note
+func changePermissions(noteId int, username string, read bool, write bool, owner bool) { //needs to be change permissions, if the user is already associated with the note
 	updated := false
-	db, err := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable")
+	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	rows, err := db.Query("SELECT * FROM PermissionsTable ")
 	if err != nil {
 		log.Fatal(err)
@@ -162,11 +160,12 @@ func changePermissions(noteId int, username string, read bool, write bool) { //n
 		Username string
 		Read     bool
 		Write    bool
+		Owner    bool
 	)
 
 	for rows.Next() {
 
-		err = rows.Scan(&noteId, &username, &Read, &Write)
+		err = rows.Scan(&noteId, &username, &Read, &Write, &Owner)
 		if noteId == NoteId && username == Username { //if user already has permissions associated with it it needs to be updated rather than inserted
 			//update table
 			updated = true
@@ -175,7 +174,7 @@ func changePermissions(noteId int, username string, read bool, write bool) { //n
 
 	}
 	if !updated {
-		_, err = db.Exec("INSERT INTO PermissionsTable(noteId, username, read, write) VALUES($1,$2,$3,$4)", noteId, username, read, write)
+		_, err = db.Exec("INSERT INTO PermissionsTable(noteId, username, read, write, owner) VALUES($1,$2,$3,$4,$5)", noteId, username, read, write, owner)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -184,7 +183,7 @@ func changePermissions(noteId int, username string, read bool, write bool) { //n
 }
 
 func prepareDatabase() {
-	db, err := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable")
+	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432")
 	err = db.Ping()
 
 	//userstable
@@ -212,7 +211,7 @@ func prepareDatabase() {
 		log.Fatal(err)
 	}
 
-	_, err = db.Exec("CREATE TABLE PermissionsTable(noteId int, username varchar(50), read boolean, write boolean)")
+	_, err = db.Exec("CREATE TABLE PermissionsTable(noteId int, username varchar(50), read boolean, write boolean, owner boolean)")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -293,22 +292,23 @@ func changeNewPermissions(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		NoteId   int    `json:"noteid"`
 		Username string `json:"username"`
-		Read     bool   `json:"read`
-		Write    bool   `json:write`
+		Read     bool   `json:"read"`
+		Write    bool   `json:"write"`
+		Owner    bool   `json:"owner"`
 	}{}
 	err := decoder.Decode(&data)
 
 	if err != nil {
 		panic(err)
 	}
-	changePermissions(data.NoteId, data.Username, data.Read, data.Write)
+	changePermissions(data.NoteId, data.Username, data.Read, data.Write, data.Owner)
 
 	defer r.Body.Close()
 
 }
 
 func viewUsers() {
-	db, _ := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable port=5432")
+	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432")
 	rows, err := db.Query("SELECT * FROM UsersTable ")
 	if err != nil {
 		log.Fatal(err)
@@ -338,7 +338,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		t.Execute(w, nil)
 	}
 
-	db, _ := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable")
+	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	rows, err := db.Query("SELECT * FROM NotesTable ")
 	if err != nil {
 		log.Fatal(err)
@@ -349,8 +349,6 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		Username string
 		Note     string
 	)
-	
-
 
 	for rows.Next() {
 
@@ -365,7 +363,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 }
 func viewPermissions() {
-	db, _ := sql.Open("postgres", "user=postgres password=postgres dbname=webAppDatabase sslmode=disable")
+	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	rows, err := db.Query("SELECT * FROM PermissionsTable ")
 	if err != nil {
 		log.Fatal(err)
@@ -376,15 +374,17 @@ func viewPermissions() {
 		Username string
 		Read     bool
 		Write    bool
+		Owner    bool
 	)
 
 	for rows.Next() {
 
-		err = rows.Scan(&NoteId, &Username, &Read, &Write)
+		err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
 		fmt.Println(NoteId)
 		fmt.Println(Username)
 		fmt.Println(Read)
 		fmt.Println(Write)
+		fmt.Println(Owner)
 
 	}
 
@@ -404,4 +404,5 @@ type Permissions struct {
 	username string
 	read     bool
 	write    bool
+	owner    bool
 }
