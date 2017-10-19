@@ -146,7 +146,7 @@ func addNote(username string, note string) { //adds a new note to the database
 		log.Fatal(err)
 	}
 	fmt.Println(NoteId)
-	_, err = db.Exec("INSERT INTO PermissionsTable(noteid, username, read, write) VALUES($1,$2,$3,$4)", NoteId, username, "true", "true") //adds read and write permissions to the user the created the note
+	_, err = db.Exec("INSERT INTO PermissionsTable(noteid, username, read, write, owner) VALUES($1,$2,$3,$4,$5)", NoteId, username, "true", "true", "true") //adds read and write permissions to the user the created the note
 	if err != nil {
 		log.Fatal(err)
 	}
