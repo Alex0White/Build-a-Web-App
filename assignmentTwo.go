@@ -218,7 +218,7 @@ func prepareDatabase() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = db.Exec("CREATE TABLE NotesTable(noteId SERIAL, username varchar(50), note varchar(50))")
+	_, err = db.Exec("CREATE TABLE NotesTable(noteId SERIAL, username varchar(50), note text)")
 	if err != nil {
 		log.Fatal(err)
 	}
