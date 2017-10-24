@@ -151,6 +151,10 @@ func addNote(username string, note string) { //adds a new note to the database
 	}
 
 }
+func updateNote(note string, noteid int, db *sql.DB) {
+	db.Exec("UPDATE NotesTable SET note = $1 WHERE noteid = $2", note, noteid)
+}
+
 func addUser(username string, password string) { //adds a new user to the database
 
 	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
@@ -377,8 +381,26 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
 		if Read == true && Write == true && Owner == true {
 			fmt.Println("note read write owner")
-			fmt.Fprintf(w, "<h1>"+username.Value+"</h1>")
-			fmt.Fprintf(w, "<textarea name=\"anote\"  cols=\"40\" rows=\"5\">text and stuff from notes</textarea>")
+			fmt.Println(NoteId)
+			TheNote, err := db.Query(`SELECT note, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println(TheNote)
+			var (
+				note   string
+				noteid int
+			)
+			for TheNote.Next() {
+				fmt.Fprintf(w, "<h1>"+username.Value+"</h1>")
+				err = TheNote.Scan(&note, &noteid)
+
+				fmt.Fprintf(w, "<form  method=\"post\">"+
+					"<textarea name=\"anote\"  cols=\"40\" rows=\"5\">"+note+"</textarea>"+
+					"<input type=\"submit\" value=\"Update Note\">"+"</form>")
+
+			}
+
 			//r.Form["anote"][0] = "a bunch of text and stuff"
 		} else if Read == true && Write == true {
 			fmt.Println("can read and write but not owner")
@@ -387,11 +409,15 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		} else {
 			fmt.Println("can't read note")
 		}
-		//fmt.Println(NoteId)
-		//fmt.Println(Username)
-		//fmt.Println(Read)
-		//fmt.Println(Write)
-		//fmt.Println(Owner)
+
+	}
+	if r.Method != "GET" {
+
+		n := r.Form["anote"][0]
+
+		fmt.Println(n)
+
+		updateNote(n, 1, db)
 	}
 	/*
 		rows, err := db.Query("SELECT * FROM NotesTable ")
