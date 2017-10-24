@@ -347,48 +347,76 @@ func viewUsers() {
 func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 	var username, err = r.Cookie("username")
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(username)
-	
 
 	r.ParseForm()
 	fmt.Println("method:", r.Method) //get request method
 	//fmt.Fprintf(w, "<h3>"+username.Value+":</h3><br>")
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("notes.html")
-		
 
 		t.Execute(w, nil)
-		
-		
-	
+
 	}
 
 	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
-	rows, err := db.Query("SELECT * FROM NotesTable ")
-	if err != nil {
-		log.Fatal(err)
-	}
 
+	rows, err := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
 	var (
 		NoteId   int
 		Username string
 		Read     bool
 		Write    bool
+		Owner    bool
 	)
 
-
-
 	for rows.Next() {
-
-		err = rows.Scan(&NoteId, &Username, &Read, &Write)
-
+		err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
+		if Read == true && Write == true && Owner == true {
+			fmt.Println("note read write owner")
+			fmt.Fprintf(w, "<h1>"+username.Value+"</h1>")
+			fmt.Fprintf(w, "<textarea name=\"anote\"  cols=\"40\" rows=\"5\">text and stuff from notes</textarea>")
+			//r.Form["anote"][0] = "a bunch of text and stuff"
+		} else if Read == true && Write == true {
+			fmt.Println("can read and write but not owner")
+		} else if Read == true {
+			fmt.Println("can read note")
+		} else {
+			fmt.Println("can't read note")
+		}
+		//fmt.Println(NoteId)
 		//fmt.Println(Username)
 		//fmt.Println(Read)
-
-		//fmt.Fprintf(w, Note+"<br>")
-
+		//fmt.Println(Write)
+		//fmt.Println(Owner)
 	}
+	/*
+		rows, err := db.Query("SELECT * FROM NotesTable ")
+		if err != nil {
+			log.Fatal(err)
+		}
 
+		var (
+			NoteId   int
+			Username string
+			Read     bool
+			Write    bool
+		)
+
+		for rows.Next() {
+
+			err = rows.Scan(&NoteId, &Username, &Read, &Write)
+
+			//fmt.Println(Username)
+			//fmt.Println(Read)
+
+			//fmt.Fprintf(w, Note+"<br>")
+
+		}
+	*/
 }
 func viewPermissions() {
 	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
