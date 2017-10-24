@@ -16,7 +16,7 @@ func main() {
 
 	// Then, initialize the session manager
 
-	prepareDatabase()
+	//prepareDatabase()
 	//viewUsers()
 	//viewNotes()
 	//viewPermissions()
@@ -27,6 +27,7 @@ func main() {
 
 	//     globalSessions = NewManager("memory","gosessionid",3600)
 	//http.Handle("/", http.FileServer(http.Dir("css/")))
+	//changePermissions(2,"con",false,false,true)
 	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
 	http.HandleFunc("/notes", viewNotes)
@@ -181,16 +182,26 @@ func changePermissions(noteId int, username string, read bool, write bool, owner
 
 	for rows.Next() {
 
-		err = rows.Scan(&noteId, &username, &Read, &Write, &Owner)
+		err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
+		
 		if noteId == NoteId && username == Username { //if user already has permissions associated with it it needs to be updated rather than inserted
-			//update table
+			sqlStatement := `  
+			UPDATE PermissionsTable  
+			SET read = $3, write = $4  
+			WHERE noteid = $1 AND username = $2;`  
+			_, err = db.Exec(sqlStatement, noteId, username, read, write)  
+			if err != nil {  
+			  panic(err)
+			}
 			updated = true
+			
 
 		}
 
 	}
 	if !updated {
-		_, err = db.Exec("INSERT INTO PermissionsTable(noteId, username, read, write, owner) VALUES($1,$2,$3,$4,$5)", noteId, username, read, write, owner)
+		fmt.Println("wat up")
+		_, err = db.Exec("INSERT INTO PermissionsTable(noteid, username, read, write, owner) VALUES($1,$2,$3,$4,$5)", noteId, username, read, write, owner)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -336,7 +347,7 @@ func viewUsers() {
 	)
 
 	for rows.Next() {
-
+		
 		err = rows.Scan(&Username, &Password)
 		fmt.Println(Username)
 		fmt.Println(Password)
@@ -384,8 +395,10 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("can read and write but not owner")
 		} else if Read == true {
 			fmt.Println("can read note")
+			fmt.Println(NoteId)
 		} else {
 			fmt.Println("can't read note")
+			fmt.Println(NoteId)
 		}
 		//fmt.Println(NoteId)
 		//fmt.Println(Username)
