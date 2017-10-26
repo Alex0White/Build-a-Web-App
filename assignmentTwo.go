@@ -10,24 +10,15 @@ import (
 	"strconv"
 	_ "sync"
 
+	"regexp"
+
 	_ "github.com/lib/pq"
 )
 
 func main() {
 
-	// Then, initialize the session manager
+	//prepareDatabase() //uncomment to restart the database
 
-	prepareDatabase()
-	//viewUsers()
-	//viewNotes()
-	//viewPermissions()
-	//http.HandleFunc("/", HomePage)
-	//http.HandleFunc("/", login)
-	// var globalSessions *session.Manager
-	// // Then, initialize the session manager
-
-	//     globalSessions = NewManager("memory","gosessionid",3600)
-	//http.Handle("/", http.FileServer(http.Dir("css/")))
 	//changePermissions(2,"con",false,false,true)
 	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
@@ -39,47 +30,18 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
-	//viewUsers()
 
-}
-
-func HomePage(w http.ResponseWriter, r *http.Request) {
-
-	// t, err := template.ParseFiles("homepage.html") //parse the html file homepage.html
-
-	// if err != nil { // if there is an error
-	// 	log.Print("template parsing error: ", err) // log it
-	// }
-	// type PageVariables struct {
-	// 	Test string
-	// }
-	// HomePageVars := PageVariables{ //store the date and time in a struct
-	// 	Test: "hey",
-	// }
-	// err = t.Execute(w, HomePageVars) //execute the template and pass it the HomePageVars struct to fill in the gaps
-	// if err != nil {                  // if there is an error
-	// 	log.Print("template executing error: ", err) //log it
-	// }
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
 	var loggedin = false
-	//fmt.Println("method:", r.Method) //get request method
 
 	if r.Method == "GET" {
-
-		//fmt.Println(sess)
-
-		//userName := sess.CAttr("UserName")
-		//fmt.Println(userName)
 		t, _ := template.ParseFiles("login.html")
 		t.Execute(w, nil)
 	} else {
 
 		r.ParseForm()
-
-		// fmt.Println("username:", r.Form["username"])
-		// fmt.Println("password:", r.Form["password"])
 
 		db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432 ")
 		rows, err := db.Query("SELECT * FROM UsersTable ")
@@ -99,7 +61,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 				if r.Form["password"][0] == Password {
 					loggedin = true
 					fmt.Println("Logged in!")
-					//sess := session.NewSession()
 					cookie1 := &http.Cookie{Name: "username", Value: (Username), HttpOnly: false}
 					http.SetCookie(w, cookie1)
 					var cookie, err = r.Cookie("username")
@@ -109,8 +70,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 					} else {
 						fmt.Println(err)
 					}
-
-					//sess.Set("username", r.Form["username"])
 
 					t, _ := template.ParseFiles("notes.html")
 					t.Execute(w, nil)
@@ -213,42 +172,6 @@ func changePermissions(noteId int, username string, read bool, write bool, owner
 	}
 
 }
-
-func prepareDatabase() {
-	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432")
-	err = db.Ping()
-
-	//userstable
-	_, err = db.Exec("DROP TABLE IF EXISTS UsersTable")
-	if err != nil {
-		log.Fatal(err)
-	}
-	_, err = db.Exec("CREATE TABLE UsersTable(username varchar(50), password varchar(50))")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	//notestable
-	_, err = db.Exec("DROP TABLE IF EXISTS NotesTable")
-	if err != nil {
-		log.Fatal(err)
-	}
-	_, err = db.Exec("CREATE TABLE NotesTable(noteId SERIAL, username varchar(50), note text)")
-	if err != nil {
-		log.Fatal(err)
-	}
-	//permissions table
-	_, err = db.Exec("DROP TABLE IF EXISTS PermissionsTable ")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = db.Exec("CREATE TABLE PermissionsTable(noteId int, username varchar(50), read boolean, write boolean, owner boolean)")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-}
 func addNewUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("addaccount.html")
@@ -268,12 +191,112 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func searchNotes(w http.ResponseWriter, r *http.Request) {
+	var username, _ = r.Cookie("username")
+	var TheNote *sql.Rows
+	var matched bool
+
 	r.ParseForm()
+
 	//fmt.Println("method:", r.Method) //get request method
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("search.html")
 
 		t.Execute(w, nil)
+	} else {
+		db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+
+		rows, _ := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
+		var (
+			NoteId   int
+			Username string
+			Read     bool
+			Write    bool
+			Owner    bool
+		)
+		for rows.Next() {
+			err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
+			if Read == true {
+
+				TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable`)
+
+				if err != nil {
+					log.Fatal(err)
+				}
+
+			}
+		}
+
+		userInput := r.Form["textboxid"][0]
+		matched = false
+		fmt.Println(userInput)
+		option := r.Form["selectid"][0]
+		switch option {
+		case "prefix":
+
+		case "phoneNumber":
+			fmt.Println("Phone Number")
+		case "email":
+			t, _ := template.ParseFiles("search.html")
+			t.Execute(w, nil)
+			for TheNote.Next() {
+				var (
+					note   string
+					noteid int
+				)
+				err = TheNote.Scan(&note, &noteid)
+
+				matched, err = regexp.MatchString(".+@"+userInput+"+\\..+$", note)
+
+				if matched {
+
+					fmt.Fprintf(w, "<p>"+note+"</p>")
+				}
+
+			}
+
+		case "text":
+			t, _ := template.ParseFiles("search.html")
+			t.Execute(w, nil)
+			for TheNote.Next() {
+				var (
+					note   string
+					noteid int
+				)
+				err = TheNote.Scan(&note, &noteid)
+
+				match := regexp.MustCompile("meeting|minutes|agenda|action|attendees|apologies")
+
+				matches := match.FindAllStringIndex(note, -1)
+
+				fmt.Println(len(matches))
+				if len(matches) >= 3 {
+					fmt.Fprintf(w, "<p>"+note+"</p>")
+				}
+
+			}
+			fmt.Println("Text")
+		case "capitals":
+			t, _ := template.ParseFiles("search.html")
+			t.Execute(w, nil)
+			for TheNote.Next() {
+				var (
+					note   string
+					noteid int
+				)
+				err = TheNote.Scan(&note, &noteid)
+
+				matched, _ = regexp.MatchString("([A-Z]){3,}", note)
+				if matched {
+
+					fmt.Fprintf(w, "<p>"+note+"</p>")
+				}
+
+			}
+
+		default:
+			fmt.Println("nothing")
+		}
+
 	}
 }
 
@@ -286,9 +309,8 @@ func addNewNote(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 
-	//ess := session.Get(r)
 	r.ParseForm()
-	//fmt.Println("method:", r.Method) //get request method
+
 	if r.Method == "GET" {
 
 		t, _ := template.ParseFiles("createnote.html")
@@ -301,21 +323,6 @@ func addNewNote(w http.ResponseWriter, r *http.Request) {
 		//viewNotes()
 		viewPermissions()
 	}
-
-	// decoder := json.NewDecoder(r.Body)
-	// data := struct {
-	// 	NoteId   int    `json:"noteid"`
-	// 	Username string `json:"username"`
-	// 	Note     string `json:"note`
-	// }{}
-	// err := decoder.Decode(&data)
-
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// addNote(data.NoteId, data.Username, data.Note) //adds new note to the database
-
-	// defer r.Body.Close()
 
 }
 func changeNewPermissions(w http.ResponseWriter, r *http.Request) {
@@ -497,6 +504,43 @@ func viewPermissions() {
 		fmt.Println(Write)
 		fmt.Println(Owner)
 
+	}
+
+}
+
+//sets up all the tables and columns in the database//
+func prepareDatabase() {
+	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432")
+	err = db.Ping()
+
+	//userstable
+	_, err = db.Exec("DROP TABLE IF EXISTS UsersTable")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = db.Exec("CREATE TABLE UsersTable(username varchar(50), password varchar(50))")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//notestable
+	_, err = db.Exec("DROP TABLE IF EXISTS NotesTable")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = db.Exec("CREATE TABLE NotesTable(noteId SERIAL, username varchar(50), note text)")
+	if err != nil {
+		log.Fatal(err)
+	}
+	//permissions table
+	_, err = db.Exec("DROP TABLE IF EXISTS PermissionsTable ")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec("CREATE TABLE PermissionsTable(noteId int, username varchar(50), read boolean, write boolean, owner boolean)")
+	if err != nil {
+		log.Fatal(err)
 	}
 
 }
