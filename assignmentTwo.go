@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	_ "sync"
 
 	_ "github.com/lib/pq"
@@ -16,7 +17,7 @@ func main() {
 
 	// Then, initialize the session manager
 
-	//prepareDatabase()
+	prepareDatabase()
 	//viewUsers()
 	//viewNotes()
 	//viewPermissions()
@@ -153,6 +154,7 @@ func addNote(username string, note string) { //adds a new note to the database
 
 }
 func updateNote(note string, noteid int, db *sql.DB) {
+
 	db.Exec("UPDATE NotesTable SET note = $1 WHERE noteid = $2", note, noteid)
 }
 
@@ -187,18 +189,17 @@ func changePermissions(noteId int, username string, read bool, write bool, owner
 	for rows.Next() {
 
 		err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
-		
+
 		if noteId == NoteId && username == Username { //if user already has permissions associated with it it needs to be updated rather than inserted
 			sqlStatement := `  
 			UPDATE PermissionsTable  
 			SET read = $3, write = $4  
-			WHERE noteid = $1 AND username = $2;`  
-			_, err = db.Exec(sqlStatement, noteId, username, read, write)  
-			if err != nil {  
-			  panic(err)
+			WHERE noteid = $1 AND username = $2;`
+			_, err = db.Exec(sqlStatement, noteId, username, read, write)
+			if err != nil {
+				panic(err)
 			}
 			updated = true
-			
 
 		}
 
@@ -351,7 +352,7 @@ func viewUsers() {
 	)
 
 	for rows.Next() {
-		
+
 		err = rows.Scan(&Username, &Password)
 		fmt.Println(Username)
 		fmt.Println(Password)
@@ -359,6 +360,7 @@ func viewUsers() {
 
 	}
 }
+
 func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 	var username, err = r.Cookie("username")
@@ -378,7 +380,25 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+	if r.Method != "GET" {
+		fmt.Println(r.Form)
+		n := r.Form["anote"][0]
+		idstring := r.Form["aid"][0]
+		i, err := strconv.Atoi(idstring)
 
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(i)
+		fmt.Println(r.Form)
+
+		fmt.Println(n)
+
+		updateNote(n, i, db)
+		t, _ := template.ParseFiles("notes.html")
+
+		t.Execute(w, nil)
+	}
 	rows, err := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
 	var (
 		NoteId   int
@@ -391,13 +411,13 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
 		if Read == true && Write == true && Owner == true {
-			fmt.Println("note read write owner")
-			fmt.Println(NoteId)
+			//fmt.Println("note read write owner")
+			//fmt.Println(NoteId)
 			TheNote, err := db.Query(`SELECT note, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
 			if err != nil {
 				log.Fatal(err)
 			}
-			fmt.Println(TheNote)
+			//fmt.Println(TheNote)
 			var (
 				note   string
 				noteid int
@@ -405,9 +425,12 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 			for TheNote.Next() {
 				fmt.Fprintf(w, "<h1>"+username.Value+"</h1>")
 				err = TheNote.Scan(&note, &noteid)
-
-				fmt.Fprintf(w, "<form  method=\"post\">"+
+				idAsString := strconv.Itoa(noteid)
+				fmt.Println(idAsString)
+				fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
 					"<textarea name=\"anote\"  cols=\"40\" rows=\"5\">"+note+"</textarea>"+
+
+					"<input name=\"aid\" type=\"hidden\"value="+idAsString+">"+
 					"<input type=\"submit\" value=\"Update Note\">"+"</form>")
 
 			}
@@ -424,14 +447,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
-	if r.Method != "GET" {
 
-		n := r.Form["anote"][0]
-
-		fmt.Println(n)
-
-		updateNote(n, 1, db)
-	}
 	/*
 		rows, err := db.Query("SELECT * FROM NotesTable ")
 		if err != nil {
