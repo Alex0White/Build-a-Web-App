@@ -1,3 +1,4 @@
+<head>
 <style>
         ul {
           list-style-type: none;
@@ -24,6 +25,7 @@
     font-size:14pt;
   }
         </style>
+        </head>
         <body>
                 <ul>
                       <li><a href="notes">Notes</a></li>
@@ -33,9 +35,20 @@
                 </ul>
         
 <h1>Search</h1>
-<form action="search" method="post">
-            <input id="textboxid"type="text" name="note" >
+
+<form action="/search" method="post">
+        <select name ="selectid">
+                <option value="prefix">Prefix/Suffix</option>
+                <option value="phoneNumber">Phone Number</option>
+                <option value="email">Email</option>
+                <option value="text">Text</option>
+                <option value="capitals">Capitals</option>
+                
+         </select>
+    <br><br>
+            <input name="textboxid"type="text" name="note" >
             <br><br>
             <input type="submit" value="Search">
            
 </form> 
+</body>

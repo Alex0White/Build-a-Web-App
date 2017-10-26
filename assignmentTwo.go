@@ -7,6 +7,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"regexp"
+	_ "reflect"
+
 	_ "sync"
 
 	_ "github.com/lib/pq"
@@ -267,12 +270,122 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func searchNotes(w http.ResponseWriter, r *http.Request) {
+	var username, _ = r.Cookie("username")
+	var TheNote *sql.Rows
+	var matched bool
+	
+	
 	r.ParseForm()
+	
 	//fmt.Println("method:", r.Method) //get request method
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("search.html")
 
 		t.Execute(w, nil)
+	}else{
+		db,err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+		
+			rows, _ := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
+			var (
+				NoteId   int
+				Username string
+				Read     bool
+				Write    bool
+				Owner    bool
+					
+			)
+			 
+			
+		
+			for rows.Next() {
+				err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
+				if Read == true {
+					
+					TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable`)
+				
+					if err != nil {
+						log.Fatal(err)
+					}
+					
+				}
+			}
+				
+					
+		userInput := r.Form["textboxid"][0]
+		matched = false
+		fmt.Println(userInput)
+		option := r.Form["selectid"][0]
+		switch option {
+		case "prefix":
+			
+		case "phoneNumber":
+			fmt.Println("Phone Number")
+		case "email":
+			t, _ := template.ParseFiles("search.html")
+			t.Execute(w, nil)
+			for TheNote.Next() {
+				var (
+					note   string
+					noteid int
+				)
+				err = TheNote.Scan(&note, &noteid)
+		
+				matched,err = regexp.MatchString(".+@"+userInput+"+\\..+$", note)
+
+				if matched{
+					
+						fmt.Fprintf(w, "<p>"+note+"</p>")
+				}
+				
+			}
+		
+		case "text":
+			t, _ := template.ParseFiles("search.html")
+			t.Execute(w, nil)
+			for TheNote.Next() {
+				var (
+					note   string
+					noteid int
+				)
+				err = TheNote.Scan(&note, &noteid)
+
+				match := regexp.MustCompile("meeting|minutes|agenda|action|attendees|apologies")
+				
+				matches := match.FindAllStringIndex(note, -1)
+		
+				fmt.Println(len(matches))
+				if len(matches) >= 3{
+					fmt.Fprintf(w,"<p>"+note+"</p>")
+				}
+				
+			}
+			fmt.Println("Text")
+		case "capitals":
+			t, _ := template.ParseFiles("search.html")
+			t.Execute(w, nil)
+			for TheNote.Next() {
+				var (
+					note   string
+					noteid int
+				)
+				err = TheNote.Scan(&note, &noteid)
+		
+				matched,_ = regexp.MatchString("([A-Z]){3,}", note)
+				if matched{
+					
+				fmt.Fprintf(w, "<p>"+note+"</p>")
+				}
+				
+			}
+
+			
+		
+				
+			
+		default:
+			fmt.Println("nothing")
+		}
+		
 	}
 }
 
