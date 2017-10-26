@@ -17,7 +17,7 @@ import (
 
 func main() {
 
-	//prepareDatabase() //uncomment to restart the database
+	prepareDatabase() //uncomment to restart the database
 
 	//changePermissions(2,"con",false,false,true)
 	http.HandleFunc("/", login)
@@ -115,6 +115,10 @@ func addNote(username string, note string) { //adds a new note to the database
 func updateNote(note string, noteid int, db *sql.DB) {
 
 	db.Exec("UPDATE NotesTable SET note = $1 WHERE noteid = $2", note, noteid)
+}
+func deleteNote(username string, noteid int, db *sql.DB) {
+
+	db.Exec("DELETE FROM NotesTable WHERE noteid = $1 AND username = $2", noteid, username)
 }
 
 func addUser(username string, password string) { //adds a new user to the database
@@ -378,7 +382,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 	fmt.Println("method:", r.Method) //get request method
-	//fmt.Fprintf(w, "<h3>"+username.Value+":</h3><br>")
+
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("notes.html")
 
@@ -387,24 +391,33 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
-	if r.Method != "GET" {
-		fmt.Println(r.Form)
-		n := r.Form["anote"][0]
-		idstring := r.Form["aid"][0]
-		i, err := strconv.Atoi(idstring)
 
-		if err != nil {
-			log.Fatal(err)
+	if r.Method == "POST" {
+		fmt.Println(r.Form)
+		if r.Form.Get("Delete Note") == "Delete Note" {
+			idstring := r.Form["aid"][0]
+			i, err := strconv.Atoi(idstring)
+			if err != nil {
+				log.Fatal(err)
+			}
+			deleteNote(username.Value, i, db)
+			t, _ := template.ParseFiles("notes.html")
+
+			t.Execute(w, nil)
+		} else {
+
+			n := r.Form["anote"][0]
+			idstring := r.Form["aid"][0]
+			i, err := strconv.Atoi(idstring)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			updateNote(n, i, db)
+			t, _ := template.ParseFiles("notes.html")
+
+			t.Execute(w, nil)
 		}
-		fmt.Println(i)
-		fmt.Println(r.Form)
-
-		fmt.Println(n)
-
-		updateNote(n, i, db)
-		t, _ := template.ParseFiles("notes.html")
-
-		t.Execute(w, nil)
 	}
 	rows, err := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
 	var (
@@ -420,25 +433,28 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		if Read == true && Write == true && Owner == true {
 			//fmt.Println("note read write owner")
 			//fmt.Println(NoteId)
-			TheNote, err := db.Query(`SELECT note, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
+			TheNote, err := db.Query(`SELECT note, username, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
 			if err != nil {
 				log.Fatal(err)
 			}
 			//fmt.Println(TheNote)
 			var (
-				note   string
-				noteid int
+				note     string
+				username string
+				noteid   int
 			)
 			for TheNote.Next() {
-				fmt.Fprintf(w, "<h1>"+username.Value+"</h1>")
-				err = TheNote.Scan(&note, &noteid)
+
+				err = TheNote.Scan(&note, &username, &noteid)
+				fmt.Fprintf(w, "<h1>noteowner "+username+"</h1>")
 				idAsString := strconv.Itoa(noteid)
-				fmt.Println(idAsString)
+
 				fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
 					"<textarea name=\"anote\"  cols=\"40\" rows=\"5\">"+note+"</textarea>"+
 
 					"<input name=\"aid\" type=\"hidden\"value="+idAsString+">"+
-					"<input type=\"submit\" value=\"Update Note\">"+"</form>")
+					"<input type=\"submit\" value=\"Update Note\">"+
+					"<input type=\"submit\" name=\"Delete Note\" value=\"Delete Note\">"+"</form>")
 
 			}
 
