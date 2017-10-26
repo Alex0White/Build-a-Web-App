@@ -236,6 +236,43 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 		option := r.Form["selectid"][0]
 		switch option {
 		case "prefix":
+			t, _ := template.ParseFiles("search.html")
+			t.Execute(w, nil)
+			for TheNote.Next() {
+				var (
+					note   string
+					noteid int
+				)
+				err = TheNote.Scan(&note, &noteid)
+
+				matched, err = regexp.MatchString("\\. "+userInput+"|^"+userInput, note)
+
+				if matched {
+
+					fmt.Fprintf(w, "<p>"+note+"</p>")
+				}
+
+			}
+
+		case "suffix":
+			t, _ := template.ParseFiles("search.html")
+			t.Execute(w, nil)
+			for TheNote.Next() {
+				var (
+					note   string
+					noteid int
+				)
+				err = TheNote.Scan(&note, &noteid)
+
+				matched, err = regexp.MatchString(userInput+"\\.", note)
+
+				if matched {
+
+					fmt.Fprintf(w, "<p>"+note+"</p>")
+				}
+
+			}
+
 
 		case "phoneNumber":
 			t, _ := template.ParseFiles("search.html")
@@ -247,7 +284,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 				)
 				err = TheNote.Scan(&note, &noteid)
 
-				matched, err = regexp.MatchString("^"+userInput+"+", note)
+				matched, err = regexp.MatchString("\\D"+userInput+"\\d", note)
 
 				if matched {
 
@@ -265,7 +302,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 				)
 				err = TheNote.Scan(&note, &noteid)
 
-				matched, err = regexp.MatchString(".+@"+userInput+"+\\..+$", note)
+				matched, err = regexp.MatchString("\\w+@"+userInput+"+.*\\.\\w", note)
 
 				if matched {
 
