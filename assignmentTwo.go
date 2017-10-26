@@ -17,7 +17,7 @@ import (
 
 func main() {
 
-	prepareDatabase() //uncomment to restart the database
+	//prepareDatabase() //uncomment to restart the database
 
 	//changePermissions(2,"con",false,false,true)
 	http.HandleFunc("/", login)
@@ -229,7 +229,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 
 			}
 		}
-
+		
 		userInput := r.Form["textboxid"][0]
 		matched = false
 		fmt.Println(userInput)
@@ -238,7 +238,23 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 		case "prefix":
 
 		case "phoneNumber":
-			fmt.Println("Phone Number")
+			t, _ := template.ParseFiles("search.html")
+			t.Execute(w, nil)
+			for TheNote.Next() {
+				var (
+					note   string
+					noteid int
+				)
+				err = TheNote.Scan(&note, &noteid)
+
+				matched, err = regexp.MatchString("^"+userInput+"+", note)
+
+				if matched {
+
+					fmt.Fprintf(w, "<p>"+note+"</p>")
+				}
+
+			}
 		case "email":
 			t, _ := template.ParseFiles("search.html")
 			t.Execute(w, nil)
