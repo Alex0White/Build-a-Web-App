@@ -17,7 +17,7 @@ import (
 
 func main() {
 
-	//prepareDatabase() //uncomment to restart the database
+	prepareDatabase() //uncomment to restart the database
 
 	//changePermissions(2,"con",false,false,true)
 	http.HandleFunc("/", login)
@@ -229,7 +229,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 
 			}
 		}
-		
+
 		userInput := r.Form["textboxid"][0]
 		matched = false
 		fmt.Println(userInput)
@@ -389,7 +389,7 @@ func viewUsers() {
 }
 
 func viewNotes(w http.ResponseWriter, r *http.Request) {
-
+	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	var username, err = r.Cookie("username")
 	if err != nil {
 		log.Fatal(err)
@@ -405,8 +405,6 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 		t.Execute(w, nil)
 
 	}
-
-	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 
 	if r.Method == "POST" {
 		fmt.Println(r.Form)
@@ -435,6 +433,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 			t.Execute(w, nil)
 		}
 	}
+
 	rows, err := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
 	var (
 		NoteId   int
@@ -470,11 +469,11 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 					"<input name=\"aid\" type=\"hidden\"value="+idAsString+">"+
 					"<input type=\"submit\" value=\"Update Note\">"+
-					"<input type=\"submit\" name=\"Delete Note\" value=\"Delete Note\">"+"</form>")
+					"<input type=\"submit\" name=\"Delete Note\" value=\"Delete Note\">"+
+					"</form>")
 
 			}
 
-			//r.Form["anote"][0] = "a bunch of text and stuff"
 		} else if Read == true && Write == true {
 			fmt.Println("can read and write but not owner")
 		} else if Read == true {
