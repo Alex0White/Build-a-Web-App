@@ -17,7 +17,7 @@ import (
 
 func main() {
 
-	prepareDatabase() //uncomment to restart the database
+	//prepareDatabase() //uncomment to restart the database
 
 	//changePermissions(2,"con",false,false,true)
 	http.HandleFunc("/", login)
@@ -196,17 +196,15 @@ type notePermissionTemp struct {
 	permissions []permission
 }
 
-
 func notePermissionsView(w http.ResponseWriter, r *http.Request) {
 	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	var username, err = r.Cookie("username")
 	if err != nil {
 		log.Fatal(err)
 	}
-	
 
 	r.ParseForm()
-	
+
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("notePermissions.html")
 
@@ -215,10 +213,10 @@ func notePermissionsView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	idstring := r.Form["aid"][0]
-	if err !=nil{
+	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("idstring: ",idstring)
+	fmt.Println("idstring: ", idstring)
 	i, err := strconv.Atoi(idstring)
 	if err != nil {
 		log.Fatal(err)
@@ -226,41 +224,46 @@ func notePermissionsView(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("this (note PermisssionsView)is note id of created note: ", i)
 	currentNoteID = i
 	t, _ := template.ParseFiles("notepermissions.html")
-			t.Execute(w, nil)
+	t.Execute(w, nil)
 	if r.Form.Get("Add Permissions") == "Add or Remove Permissions" {
-			fmt.Println("add permissions button works")
-			write := false
-			read := false
-	if r.Form["WritePriv"][0] == "Write" {
-				fmt.Println("WriteCheck box workked")
-				write = true
-			}
-	if r.Form["ReadPriv"][0] == "Read" {
+		fmt.Println("add permissions button works")
+		write := false
+		read := false
+		if r.Form["ReadPriv"] != nil {
+			if r.Form["ReadPriv"][0] == "Read" {
 				fmt.Println("read Checkbox workked")
 				read = true
 			}
-	if read == true || write == true {
-				theUser := r.Form["addthisuser"][0]
-				fmt.Println("this is the currnet note id: " , currentNoteID)
-
-				changePermissions(currentNoteID, theUser, read, write, false)
+		}
+		if r.Form["WritePriv"] != nil {
+			if r.Form["WritePriv"][0] == "Write" {
+				fmt.Println("WriteCheck box workked")
+				write = true
 			}
 		}
-		aStruct := notePermissions(currentNote, currentNoteID, db)
-		fmt.Println(aStruct)
-		
-		fmt.Fprintf(w, "<h2>Note Owner: "+username.Value+"</h2>"+
-			"<p>"+aStruct.note+"</p>"+"<form action=\"/notepermissions\" method=\"post\"><select name =\"addthisuser\">")
-		for _, u := range aStruct.users {
-			fmt.Fprintf(w, "<option value="+u.name+">"+u.name+"</option>")
-		}
+		if read == true || write == true {
+			theUser := r.Form["addthisuser"][0]
+			fmt.Println("this is the currnet note id: ", currentNoteID)
 
-		fmt.Fprintf(w, "</select>"+
-			"<input type=\"checkbox\" name=\"ReadPriv\" value=\"Read\">Read"+
-			"<input type=\"checkbox\" name=\"WritePriv\" value=\"Write\">Write"+
-			"<input name=\"aid\" type=\"hidden\"value="+idstring+">"+
-			"<input type=\"submit\" name=\"Add Permissions\" value=\"Add or Remove Permissions\">"+
-			"</form>")
+			changePermissions(currentNoteID, theUser, read, write, false)
+		}
+	}
+	aStruct := notePermissions(currentNote, currentNoteID, db)
+	fmt.Println(aStruct)
+
+	fmt.Fprintf(w, "<h2>Note Owner: "+username.Value+"</h2>"+
+		"<p>"+aStruct.note+"</p>"+"<form action=\"/notepermissions\" method=\"post\"><select name =\"addthisuser\">")
+	for _, u := range aStruct.users {
+		fmt.Fprintf(w, "<option value="+u.name+">"+u.name+"</option>")
+	}
+
+	fmt.Fprintf(w, `</select>
+		<input type="checkbox" name="ReadPriv" value="Read">Read
+		
+		<input type="checkbox" name="WritePriv" value="Write">Write
+		<input name="aid" type="hidden"value=`+idstring+`>
+		<input type="submit" name="Add Permissions" value="Add or Remove Permissions">
+		</form>`)
 
 }
 
@@ -285,13 +288,13 @@ func notePermissions(note string, noteId int, db *sql.DB) notePermissionTemp {
 		log.Fatal(err)
 	}
 	var (
-		nId   int
-		uname string
+		nId      int
+		uname    string
 		reed     bool
-		wriit   bool
-		theOwner    bool
+		wriit    bool
+		theOwner bool
 	)
-fmt.Println(nId,uname,reed,wriit,theOwner)
+	fmt.Println(nId, uname, reed, wriit, theOwner)
 	for permissionsRows.Next() {
 		permissionsRows.Scan(&nId, &uname, &reed, &wriit, &theOwner)
 
@@ -547,6 +550,7 @@ func viewUsers() {
 
 	}
 }
+
 var currentNoteID int
 var currentNote string
 
@@ -556,7 +560,6 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 
 	r.ParseForm()
 	fmt.Println("method:", r.Method) //get request method
@@ -614,7 +617,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					log.Fatal(err)
 				}
-			
+
 				var (
 					note     string
 					username string
@@ -625,7 +628,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 					err = TheNote.Scan(&note, &username, &noteid)
 					fmt.Fprintf(w, "<h1>noteowner "+username+"</h1>")
 					idAsString := strconv.Itoa(noteid)
-					
+
 					fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
 						"<textarea name=\"anote\"  cols=\"40\" rows=\"5\">"+note+"</textarea>"+"<br>"+
 
@@ -643,7 +646,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					log.Fatal(err)
 				}
-			
+
 				var (
 					note     string
 					username string
@@ -661,10 +664,33 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 						"<input type=\"submit\" value=\"Update Note\">"+
 						"</form>")
 
-					}
+				}
 			} else if Read == true {
 				fmt.Println("can read note")
-				fmt.Println(NoteId)
+				TheNote, err := db.Query(`SELECT note, username, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				var (
+					note     string
+					username string
+					noteid   int
+				)
+				for TheNote.Next() {
+
+					err = TheNote.Scan(&note, &username, &noteid)
+					fmt.Fprintf(w, "<h1>noteowner "+username+"</h1>")
+					idAsString := strconv.Itoa(noteid)
+					fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
+						"<textarea name=\"anote\"  cols=\"40\" rows=\"5\"disabled>"+note+"</textarea>"+"<br>"+
+
+						"<input name=\"aid\" type=\"hidden\"value="+idAsString+">"+
+						"<input type=\"submit\" value=\"Update Note\">"+
+						"</form>")
+
+				}
+
 			} else {
 				fmt.Println("can't read note")
 				fmt.Println(NoteId)
