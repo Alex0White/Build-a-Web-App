@@ -17,7 +17,7 @@ import (
 
 func main() {
 
-	prepareDatabase() //uncomment to restart the database
+	//prepareDatabase() //uncomment to restart the database
 
 	//changePermissions(2,"con",false,false,true)
 	http.HandleFunc("/", login)
@@ -27,12 +27,20 @@ func main() {
 	http.HandleFunc("/search", searchNotes)
 	http.HandleFunc("/changepermissions", changeNewPermissions)
 	http.HandleFunc("/notepermissions", notePermissionsView)
-
+	//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432 ")
+	db = OpenDB()
 	err := http.ListenAndServe(":9090", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
 
+}
+var db *sql.DB
+
+
+func OpenDB() *sql.DB{
+	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432 ")
+	return db
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +53,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()
 
-		db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432 ")
+		//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432 ")
 		rows, err := db.Query("SELECT * FROM UsersTable ")
 		if err != nil {
 			log.Fatal(err)
@@ -92,8 +100,8 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func addNote(username string, note string) { //adds a new note to the database
-	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+func addNote(username string, note string, db *sql.DB) { //adds a new note to the database
+	//db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	//check if username is already taken
 
 	query := "INSERT INTO NotesTable(username, note) VALUES($1,$2) RETURNING noteId" //returns the noteId so can be used when adding the note to the permissions table
@@ -123,21 +131,19 @@ func deleteNote(username string, noteid int, db *sql.DB) {
 	db.Exec("DELETE FROM NotesTable WHERE noteid = $1 AND username = $2", noteid, username)
 }
 
-func addUser(username string, password string) { //adds a new user to the database
+func addUser(username string, password string, db *sql.DB) { //adds a new user to the database
 
-	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+	//db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	//check if username is already taken
-	_, err = db.Exec("INSERT INTO UsersTable(username, password) VALUES($1,$2)", username, password)
-	if err != nil {
-		log.Fatal(err)
-	}
-	viewUsers()
+	db.Exec("INSERT INTO UsersTable(username, password) VALUES($1,$2)", username, password)
+
+	viewUsers(db)
 
 }
 
-func changePermissions(noteId int, username string, read bool, write bool, owner bool) { //needs to be change permissions, if the user is already associated with the note
+func changePermissions(noteId int, username string, read bool, write bool, owner bool, db *sql.DB) { //needs to be change permissions, if the user is already associated with the note
 	updated := false
-	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+	//db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	rows, err := db.Query("SELECT * FROM PermissionsTable ")
 	if err != nil {
 		log.Fatal(err)
@@ -198,7 +204,7 @@ type notePermissionTemp struct {
 
 
 func notePermissionsView(w http.ResponseWriter, r *http.Request) {
-	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+	//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	var username, err = r.Cookie("username")
 	if err != nil {
 		log.Fatal(err)
@@ -243,7 +249,7 @@ func notePermissionsView(w http.ResponseWriter, r *http.Request) {
 				theUser := r.Form["addthisuser"][0]
 				fmt.Println("this is the currnet note id: " , currentNoteID)
 
-				changePermissions(currentNoteID, theUser, read, write, false)
+				changePermissions(currentNoteID, theUser, read, write, false, db)
 			}
 		}
 		aStruct := notePermissions(currentNote, currentNoteID, db)
@@ -308,7 +314,7 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()
 
-		addUser(r.Form["username"][0], r.Form["password"][0])
+		addUser(r.Form["username"][0], r.Form["password"][0], db)
 		t, _ := template.ParseFiles("login.html")
 		t.Execute(w, nil)
 
@@ -331,7 +337,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 
 		t.Execute(w, nil)
 	} else {
-		db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+		//db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 
 		rows, _ := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
 		var (
@@ -342,14 +348,12 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 			Owner    bool
 		)
 		for rows.Next() {
-			err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
+			rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
 			if Read == true {
 
 				TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable`)
 
-				if err != nil {
-					log.Fatal(err)
-				}
+				
 
 			}
 		}
@@ -367,9 +371,9 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 					note   string
 					noteid int
 				)
-				err = TheNote.Scan(&note, &noteid)
+				TheNote.Scan(&note, &noteid)
 
-				matched, err = regexp.MatchString("\\. "+userInput+"|^"+userInput, note)
+				matched, _ = regexp.MatchString("\\. "+userInput+"|^"+userInput, note)
 
 				if matched {
 
@@ -386,9 +390,9 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 					note   string
 					noteid int
 				)
-				err = TheNote.Scan(&note, &noteid)
+				TheNote.Scan(&note, &noteid)
 
-				matched, err = regexp.MatchString(userInput+"\\.", note)
+				matched, _ = regexp.MatchString(userInput+"\\.", note)
 
 				if matched {
 
@@ -405,9 +409,9 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 					note   string
 					noteid int
 				)
-				err = TheNote.Scan(&note, &noteid)
+				TheNote.Scan(&note, &noteid)
 
-				matched, err = regexp.MatchString("\\D"+userInput+"\\d", note)
+				matched, _ = regexp.MatchString("\\D"+userInput+"\\d", note)
 
 				if matched {
 
@@ -423,9 +427,9 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 					note   string
 					noteid int
 				)
-				err = TheNote.Scan(&note, &noteid)
+				TheNote.Scan(&note, &noteid)
 
-				matched, err = regexp.MatchString("\\w+@"+userInput+"+.*\\.\\w", note)
+				matched, _ = regexp.MatchString("\\w+@"+userInput+"+.*\\.\\w", note)
 
 				if matched {
 
@@ -442,7 +446,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 					note   string
 					noteid int
 				)
-				err = TheNote.Scan(&note, &noteid)
+				TheNote.Scan(&note, &noteid)
 
 				match := regexp.MustCompile("meeting|minutes|agenda|action|attendees|apologies")
 
@@ -463,7 +467,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 					note   string
 					noteid int
 				)
-				err = TheNote.Scan(&note, &noteid)
+				TheNote.Scan(&note, &noteid)
 
 				matched, _ = regexp.MatchString("([A-Z]){3,}", note)
 				if matched {
@@ -496,7 +500,7 @@ func addNewNote(w http.ResponseWriter, r *http.Request) {
 		t, _ := template.ParseFiles("createnote.html")
 		t.Execute(w, nil)
 	} else {
-		addNote(username.Value, r.Form["note"][0])
+		addNote(username.Value, r.Form["note"][0], db)
 
 		t, _ := template.ParseFiles("createnote.html")
 		t.Execute(w, nil)
@@ -520,14 +524,14 @@ func changeNewPermissions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	changePermissions(data.NoteId, data.Username, data.Read, data.Write, data.Owner)
+	changePermissions(data.NoteId, data.Username, data.Read, data.Write, data.Owner, db)
 
 	defer r.Body.Close()
 
 }
 
-func viewUsers() {
-	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432")
+func viewUsers(db *sql.DB) {
+	//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432")
 	rows, err := db.Query("SELECT * FROM UsersTable ")
 	if err != nil {
 		log.Fatal(err)
@@ -551,7 +555,7 @@ var currentNoteID int
 var currentNote string
 
 func viewNotes(w http.ResponseWriter, r *http.Request) {
-	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+	//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	var username, err = r.Cookie("username")
 	if err != nil {
 		log.Fatal(err)
@@ -675,7 +679,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 }
 func viewPermissions() {
-	db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+	//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
 	rows, err := db.Query("SELECT * FROM PermissionsTable ")
 	if err != nil {
 		log.Fatal(err)
