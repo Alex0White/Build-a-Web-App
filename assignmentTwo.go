@@ -27,7 +27,7 @@ func main() {
 	http.HandleFunc("/search", searchNotes)
 	http.HandleFunc("/changepermissions", changeNewPermissions)
 	http.HandleFunc("/notepermissions", notePermissionsView)
-	//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432 ")
+	//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432 ")
 	db = OpenDB()
 	err := http.ListenAndServe(":9090", nil)
 	if err != nil {
@@ -35,12 +35,12 @@ func main() {
 	}
 
 }
+
 var db *sql.DB
 
-
-func OpenDB() *sql.DB{
-	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432 ")
-	if err != nil{
+func OpenDB() *sql.DB {
+	db, err := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432 ")
+	if err != nil {
 		log.Fatal(err)
 		fmt.Println("Someting went wrong while opening the database")
 	}
@@ -57,7 +57,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()
 
-		//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432 ")
+		//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432 ")
 		rows, err := db.Query("SELECT * FROM UsersTable ")
 		if err != nil {
 			log.Fatal(err)
@@ -105,7 +105,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func addNote(username string, note string, db *sql.DB) { //adds a new note to the database
-	
+
 	//check if username is already taken
 
 	query := "INSERT INTO NotesTable(username, note) VALUES($1,$2) RETURNING noteId" //returns the noteId so can be used when adding the note to the permissions table
@@ -135,40 +135,37 @@ func deleteNote(username string, noteid int, db *sql.DB) {
 	db.Exec("DELETE FROM NotesTable WHERE noteid = $1 AND username = $2", noteid, username)
 }
 
-func addUser(username string, password string, db *sql.DB) (bool) { //adds a new user to the database
-
+func addUser(username string, password string, db *sql.DB) bool { //adds a new user to the database
 
 	//check if username is already taken
-	
+
 	testuser := username
 
-	user , err := db.Query("SELECT exists(SELECT username FROM UsersTable WHERE username = $1)", testuser)
+	user, err := db.Query("SELECT exists(SELECT username FROM UsersTable WHERE username = $1)", testuser)
 	//fmt.Println(user.Next())
 	user.Next()
-	var aUser bool 
+	var aUser bool
 	user.Scan(&aUser)
 	userExists := aUser
-	
-	fmt.Println(aUser)
-	if err != nil{
 
-		fmt.Println(err,"error thing for adduser == nil")
+	fmt.Println(aUser)
+	if err != nil {
+
+		fmt.Println(err, "error thing for adduser == nil")
 	}
 
-	if userExists == false{
-	db.Exec("INSERT INTO UsersTable(username, password) VALUES($1,$2)", username, password)
-	return false
-	}else{
+	if userExists == false {
+		db.Exec("INSERT INTO UsersTable(username, password) VALUES($1,$2)", username, password)
+		return false
+	} else {
 		return true
 	}
 
-	
-	}
-
+}
 
 func changePermissions(noteId int, username string, read bool, write bool, owner bool, db *sql.DB) { //needs to be change permissions, if the user is already associated with the note
 	updated := false
-	
+
 	rows, err := db.Query("SELECT * FROM PermissionsTable ")
 	if err != nil {
 		log.Fatal(err)
@@ -227,17 +224,15 @@ type notePermissionTemp struct {
 	permissions []permission
 }
 
-
 func notePermissionsView(w http.ResponseWriter, r *http.Request) {
-	//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+	//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable")
 	var username, err = r.Cookie("username")
 	if err != nil {
 		log.Fatal(err)
 	}
-	
 
 	r.ParseForm()
-	
+
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("notePermissions.html")
 
@@ -246,10 +241,10 @@ func notePermissionsView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	idstring := r.Form["aid"][0]
-	if err !=nil{
+	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("idstring: ",idstring)
+	fmt.Println("idstring: ", idstring)
 	i, err := strconv.Atoi(idstring)
 	if err != nil {
 		log.Fatal(err)
@@ -257,45 +252,45 @@ func notePermissionsView(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("this (note PermisssionsView)is note id of created note: ", i)
 	currentNoteID = i
 	t, _ := template.ParseFiles("notepermissions.html")
-			t.Execute(w, nil)
+	t.Execute(w, nil)
 	if r.Form.Get("Add Permissions") == "Add or Remove Permissions" {
-			fmt.Println("add permissions button works")
-			write := false
-			read := false
-	if r.Form["WritePriv"] != nil{
-	if r.Form["WritePriv"][0] == "Write" {
+		fmt.Println("add permissions button works")
+		write := false
+		read := false
+		if r.Form["WritePriv"] != nil {
+			if r.Form["WritePriv"][0] == "Write" {
 				fmt.Println("WriteCheck box workked")
 				write = true
 			}
 		}
-		if r.Form["ReadPriv"] != nil{
-	if r.Form["ReadPriv"][0] == "Read" {
+		if r.Form["ReadPriv"] != nil {
+			if r.Form["ReadPriv"][0] == "Read" {
 				fmt.Println("read Checkbox workked")
 				read = true
 			}
 		}
-	if read == true || write == true {
-				theUser := r.Form["addthisuser"][0]
-				fmt.Println("this is the currnet note id: " , currentNoteID)
+		if read == true || write == true {
+			theUser := r.Form["addthisuser"][0]
+			fmt.Println("this is the currnet note id: ", currentNoteID)
 
-				changePermissions(currentNoteID, theUser, read, write, false, db)
-			}
+			changePermissions(currentNoteID, theUser, read, write, false, db)
 		}
-		aStruct := notePermissions(currentNote, currentNoteID, db)
-		fmt.Println(aStruct)
-		
-		fmt.Fprintf(w, "<h2>Note Owner: "+username.Value+"</h2>"+
-			"<p>"+aStruct.note+"</p>"+"<form action=\"/notepermissions\" method=\"post\"><select name =\"addthisuser\">")
-		for _, u := range aStruct.users {
-			fmt.Fprintf(w, "<option value="+u.name+">"+u.name+"</option>")
-		}
+	}
+	aStruct := notePermissions(currentNote, currentNoteID, db)
+	fmt.Println(aStruct)
 
-		fmt.Fprintf(w, "</select>"+
-			"<input type=\"checkbox\" name=\"ReadPriv\" value=\"Read\">Read"+
-			"<input type=\"checkbox\" name=\"WritePriv\" value=\"Write\">Write"+
-			"<input name=\"aid\" type=\"hidden\"value="+idstring+">"+
-			"<input type=\"submit\" name=\"Add Permissions\" value=\"Add or Remove Permissions\">"+
-			"</form>")
+	fmt.Fprintf(w, "<h2>Note Owner: "+username.Value+"</h2>"+
+		"<p>"+aStruct.note+"</p>"+"<form action=\"/notepermissions\" method=\"post\"><select name =\"addthisuser\">")
+	for _, u := range aStruct.users {
+		fmt.Fprintf(w, "<option value="+u.name+">"+u.name+"</option>")
+	}
+
+	fmt.Fprintf(w, "</select>"+
+		"<input type=\"checkbox\" name=\"ReadPriv\" value=\"Read\">Read"+
+		"<input type=\"checkbox\" name=\"WritePriv\" value=\"Write\">Write"+
+		"<input name=\"aid\" type=\"hidden\"value="+idstring+">"+
+		"<input type=\"submit\" name=\"Add Permissions\" value=\"Add or Remove Permissions\">"+
+		"</form>")
 
 }
 
@@ -320,13 +315,13 @@ func notePermissions(note string, noteId int, db *sql.DB) notePermissionTemp {
 		log.Fatal(err)
 	}
 	var (
-		nId   int
-		uname string
+		nId      int
+		uname    string
 		reed     bool
-		wriit   bool
-		theOwner    bool
+		wriit    bool
+		theOwner bool
 	)
-fmt.Println(nId,uname,reed,wriit,theOwner)
+	fmt.Println(nId, uname, reed, wriit, theOwner)
 	for permissionsRows.Next() {
 		permissionsRows.Scan(&nId, &uname, &reed, &wriit, &theOwner)
 
@@ -347,10 +342,10 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 		if takenUser {
 			t, _ := template.ParseFiles("addaccount.html")
 			t.Execute(w, nil)
-		}else{
+		} else {
 			t, _ := template.ParseFiles("login.html")
-		t.Execute(w, nil)
-	}
+			t.Execute(w, nil)
+		}
 
 		//fmt.Println("password:", r.Form["password"])
 
@@ -358,11 +353,15 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 }
+
 func searchNotes(w http.ResponseWriter, r *http.Request) {
 	var username, _ = r.Cookie("username")
 	var TheNote *sql.Rows
 	var matched bool
-
+	type Note struct {
+		note   string
+		noteid int
+	}
 	r.ParseForm()
 
 	//fmt.Println("method:", r.Method) //get request method
@@ -371,14 +370,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 
 		t.Execute(w, nil)
 	} else {
-		//db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
-
-		type Note struct{
-			note string
-			noteid int
-		} 
-		notes := make([]Note,0)
-	
+		//db, err := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable")
 
 		rows, _ := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
 		var (
@@ -394,8 +386,6 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 
 				TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable`)
 
-				
-
 			}
 		}
 
@@ -403,30 +393,39 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 		matched = false
 		fmt.Println(userInput)
 		option := r.Form["selectid"][0]
+
+		notes := make([]Note, 0)
+
 		switch option {
 		case "prefix":
 			t, _ := template.ParseFiles("search.html")
 			t.Execute(w, nil)
-			if r.Form.Get("Search Results") == "Search Results" {
-				
-			}else{
-			for TheNote.Next() {
-				var (
-					note   string
-					noteid int
-				)
-				TheNote.Scan(&note, &noteid)
+			if r.Form.Get("research") == "Search Results" {
+				fmt.Println(notes)
+				for i := 0; i < len(notes); i++ {
 
-				matched, _ = regexp.MatchString("\\. "+userInput+"|^"+userInput, note)
+					fmt.Fprintf(w, "<p>"+notes[i].note+"</p>")
+				}
+			} else {
 
-				if matched {
-					fmt.Fprintf(w, "<p>"+note+"</p>")
-					anote := Note{note: note, noteid: noteid}
-					notes = append(notes, anote)
+				for TheNote.Next() {
+					var (
+						note   string
+						noteid int
+					)
+					TheNote.Scan(&note, &noteid)
+
+					matched, _ = regexp.MatchString("\\. "+userInput+"|^"+userInput, note)
+
+					if matched {
+						fmt.Fprintf(w, "<p>"+note+"</p>")
+						anote := Note{note: note, noteid: noteid}
+						notes = append(notes, anote)
+					}
+
 				}
 
 			}
-		}
 
 		case "suffix":
 			t, _ := template.ParseFiles("search.html")
@@ -443,6 +442,8 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 				if matched {
 
 					fmt.Fprintf(w, "<p>"+note+"</p>")
+					anote := Note{note: note, noteid: noteid}
+					notes = append(notes, anote)
 				}
 
 			}
@@ -577,7 +578,7 @@ func changeNewPermissions(w http.ResponseWriter, r *http.Request) {
 }
 
 func viewUsers(db *sql.DB) {
-	//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432")
+	//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432")
 	rows, err := db.Query("SELECT * FROM UsersTable ")
 	if err != nil {
 		log.Fatal(err)
@@ -597,16 +598,16 @@ func viewUsers(db *sql.DB) {
 
 	}
 }
+
 var currentNoteID int
 var currentNote string
 
 func viewNotes(w http.ResponseWriter, r *http.Request) {
-	//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+	//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable")
 	var username, err = r.Cookie("username")
 	if err != nil {
 		log.Fatal(err)
 	}
-
 
 	r.ParseForm()
 	fmt.Println("method:", r.Method) //get request method
@@ -664,7 +665,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					log.Fatal(err)
 				}
-			
+
 				var (
 					note     string
 					username string
@@ -675,7 +676,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 					err = TheNote.Scan(&note, &username, &noteid)
 					fmt.Fprintf(w, "<h1>noteowner "+username+"</h1>")
 					idAsString := strconv.Itoa(noteid)
-					
+
 					fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
 						"<textarea name=\"anote\"  cols=\"40\" rows=\"5\">"+note+"</textarea>"+"<br>"+
 
@@ -693,7 +694,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					log.Fatal(err)
 				}
-			
+
 				var (
 					note     string
 					username string
@@ -711,7 +712,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 						"<input type=\"submit\" value=\"Update Note\">"+
 						"</form>")
 
-					}
+				}
 			} else if Read == true {
 				fmt.Println("can read note")
 				fmt.Println(NoteId)
@@ -725,7 +726,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 }
 func viewPermissions() {
-	//db, _ := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable")
+	//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable")
 	rows, err := db.Query("SELECT * FROM PermissionsTable ")
 	if err != nil {
 		log.Fatal(err)
@@ -754,7 +755,7 @@ func viewPermissions() {
 
 //sets up all the tables and columns in the database//
 func prepareDatabase() {
-	db, err := sql.Open("postgres", "user=postgres password=chur dbname=webAppDatabase sslmode=disable port=5432")
+	db, err := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432")
 	err = db.Ping()
 
 	//userstable
