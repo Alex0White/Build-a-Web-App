@@ -358,10 +358,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 	var username, _ = r.Cookie("username")
 	var TheNote *sql.Rows
 	var matched bool
-	type Note struct {
-		note   string
-		noteid int
-	}
+
 	r.ParseForm()
 
 	//fmt.Println("method:", r.Method) //get request method
@@ -371,7 +368,13 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 		t.Execute(w, nil)
 	} else {
 		//db, err := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable")
+		tempNoteRows, _ := db.Query(`SELECT * FROM tempnoteidtable WHERE username = $1`, username.Value)
+		var (
+			tempNote string
+			tempNoteid int
+			tempUsername string
 
+		)
 		rows, _ := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
 		var (
 			NoteId   int
@@ -380,34 +383,38 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 			Write    bool
 			Owner    bool
 		)
+		if r.Form.Get("research") == "Search Results"{
+			for tempNoteRows.Next(){
+			 tempNoteRows.Scan(&tempNote, &tempNoteid, &tempUsername)
+			 if tempUsername == username.Value{
+			 TheNote, _ = db.Query(`SELECT note, noteid FROM tempnoteidtable`)
+			 fmt.Print("it lives")
+			 }
+			}
+			db.Exec(`DELETE FROM tempnoteidtable WHERE username = $1`, username.Value)
+		}else{
 		for rows.Next() {
 			rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
 			if Read == true {
 
 				TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable`)
+		
 
 			}
 		}
-
+		db.Exec(`DELETE FROM tempnoteidtable WHERE username = $1`, username.Value)
+	}
 		userInput := r.Form["textboxid"][0]
 		matched = false
 		fmt.Println(userInput)
 		option := r.Form["selectid"][0]
 
-		notes := make([]Note, 0)
+
 
 		switch option {
 		case "prefix":
 			t, _ := template.ParseFiles("search.html")
 			t.Execute(w, nil)
-			if r.Form.Get("research") == "Search Results" {
-				fmt.Println(notes)
-				for i := 0; i < len(notes); i++ {
-
-					fmt.Fprintf(w, "<p>"+notes[i].note+"</p>")
-				}
-			} else {
-
 				for TheNote.Next() {
 					var (
 						note   string
@@ -419,13 +426,13 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 
 					if matched {
 						fmt.Fprintf(w, "<p>"+note+"</p>")
-						anote := Note{note: note, noteid: noteid}
-						notes = append(notes, anote)
+						db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
+
 					}
 
 				}
 
-			}
+			
 
 		case "suffix":
 			t, _ := template.ParseFiles("search.html")
@@ -442,8 +449,8 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 				if matched {
 
 					fmt.Fprintf(w, "<p>"+note+"</p>")
-					anote := Note{note: note, noteid: noteid}
-					notes = append(notes, anote)
+			
+				
 				}
 
 			}
@@ -640,6 +647,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 		} else {
 			updateNote(n, i, db)
+			
 			t, _ := template.ParseFiles("notes.html")
 
 			t.Execute(w, nil)
@@ -757,19 +765,28 @@ func viewPermissions() {
 func prepareDatabase() {
 	db, err := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432")
 	err = db.Ping()
-
+	_, err = db.Exec("DROP TABLE IF EXISTS TempNoteIDTable")
+	if err != nil {
+		log.Fatal(err)
+	}
 	//userstable
+
 	_, err = db.Exec("DROP TABLE IF EXISTS UsersTable")
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = db.Exec("CREATE TABLE UsersTable(username varchar(50), password varchar(50))")
+	_, err = db.Exec("CREATE TABLE UsersTable(username varchar(50), password varchar(50), PRIMARY KEY (username))")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	//notestable
 	_, err = db.Exec("DROP TABLE IF EXISTS NotesTable")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec("CREATE TABLE TempNoteIDTable(note text, noteId SERIAL, username varchar(50), FOREIGN KEY (username) REFERENCES UsersTable (username))")
 	if err != nil {
 		log.Fatal(err)
 	}
