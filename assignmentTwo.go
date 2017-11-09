@@ -621,7 +621,7 @@ func viewUsers(db *sql.DB) {
 var currentNoteID int
 var currentNote string
 
-func viewNotes(w http.ResponseWriter, r *http.Request) {
+func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the notes.html page. Shows notes user created and lets them update delete and change permissions. 
 
 	var username, err = r.Cookie("username")
 	if err != nil {
@@ -665,9 +665,9 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 			t.Execute(w, nil)
 		}
 	}
-	if r.Form.Get("Edit Permissions") != "Edit Permissions" {
+	if r.Form.Get("Edit Permissions") != "Edit Permissions" {  
 
-		rows, _ := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
+		rows, _ := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value) // finds all the permissions the user is assoiated with and adds them to the rows variable
 		var (
 			NoteId   int
 			Username string
@@ -676,12 +676,11 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 			Owner    bool
 		)
 
-		for rows.Next() {
+		for rows.Next() { // goes through each permission in rows and gets the notes in the notestable associated with those permissions. Then displays the notes according to what permissions they had.    
 			err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
-			if Read == true && Write == true && Owner == true {
-				//fmt.Println("note read write owner")
-				//fmt.Println(NoteId)
-				TheNote, err := db.Query(`SELECT note, username, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
+			if Read == true && Write == true && Owner == true { // for notes that are created by the user
+
+				TheNote, err := db.Query(`SELECT note, username, noteid FROM NotesTable WHERE noteid = $1`, NoteId) //gets the note associated with the id in permissions
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -708,7 +707,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 				}
 
-			} else if Read == true && Write == true {
+			} else if Read == true && Write == true { // for note that the user has been given read and write access by another user
 				fmt.Println("can read and write but not owner")
 				TheNote, err := db.Query(`SELECT note, username, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
 				if err != nil {
@@ -732,7 +731,8 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 						"</form>")
 
 				}
-			} else if Read == true {
+
+			} else if Read == true { //for notes that the user has been given read access by another user
 				fmt.Println("can read note")
 				TheNote, err := db.Query(`SELECT note, username, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
 				if err != nil {
@@ -765,7 +765,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 }
 func viewPermissions() {
-	//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable")
+
 	rows, err := db.Query("SELECT * FROM PermissionsTable ")
 	if err != nil {
 		log.Fatal(err)
@@ -796,6 +796,7 @@ func viewPermissions() {
 func prepareDatabase() {
 	db, err := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432")
 	err = db.Ping()
+	//TempNoteIDTable need to Drop this before userstable as it contains username as foreign key 
 	_, err = db.Exec("DROP TABLE IF EXISTS TempNoteIDTable")
 	if err != nil {
 		log.Fatal(err)
@@ -816,7 +817,7 @@ func prepareDatabase() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	//TempNoteIDTable
 	_, err = db.Exec("CREATE TABLE TempNoteIDTable(note text, noteId SERIAL, username varchar(50), FOREIGN KEY (username) REFERENCES UsersTable (username))")
 	if err != nil {
 		log.Fatal(err)
