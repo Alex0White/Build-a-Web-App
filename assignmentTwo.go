@@ -18,8 +18,6 @@ import (
 func main() {
 
 	prepareDatabase() //uncomment to restart the database
-
-	//changePermissions(2,"con",false,false,true)
 	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
 	http.HandleFunc("/notes", viewNotes)
@@ -27,7 +25,7 @@ func main() {
 	http.HandleFunc("/search", searchNotes)
 	http.HandleFunc("/changepermissions", changeNewPermissions)
 	http.HandleFunc("/notepermissions", notePermissionsView)
-	//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432 ")
+
 	db = OpenDB()
 	err := http.ListenAndServe(":9090", nil)
 	if err != nil {
@@ -56,8 +54,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		r.ParseForm()
-
-		//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432 ")
 		rows, err := db.Query("SELECT * FROM UsersTable ")
 		if err != nil {
 			log.Fatal(err)
@@ -142,7 +138,7 @@ func addUser(username string, password string, db *sql.DB) bool { //adds a new u
 	testuser := username
 
 	user, err := db.Query("SELECT exists(SELECT username FROM UsersTable WHERE username = $1)", testuser)
-	//fmt.Println(user.Next())
+
 	user.Next()
 	var aUser bool
 	user.Scan(&aUser)
@@ -224,8 +220,7 @@ type notePermissionTemp struct {
 	permissions []permission
 }
 
-func notePermissionsView(w http.ResponseWriter, r *http.Request) {
-	//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable")
+func notePermissionsView(w http.ResponseWriter, r *http.Request) { //this adds content to the notepermissions page. This content shows the notes that the owners accout has created and gives them options to add permissions to their notes  
 	var username, err = r.Cookie("username")
 	if err != nil {
 		log.Fatal(err)
@@ -627,7 +622,7 @@ var currentNoteID int
 var currentNote string
 
 func viewNotes(w http.ResponseWriter, r *http.Request) {
-	//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable")
+
 	var username, err = r.Cookie("username")
 	if err != nil {
 		log.Fatal(err)
@@ -704,10 +699,10 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 
 					fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
 						"<textarea name=\"anote\"  cols=\"40\" rows=\"5\">"+note+"</textarea>"+"<br>"+
-
 						"<input name=\"aid\" type=\"hidden\"value="+idAsString+">"+
 						"<input type=\"submit\" value=\"Update Note\">"+
 						"<input type=\"submit\" name=\"Delete Note\" value=\"Delete Note\"></form>")
+
 					fmt.Fprintf(w, "<form action=\"/notepermissions\" method=\"post\"><input type=\"submit\" name=\"Edit Permissions\" value=\"Edit Permissions\">"+
 						"<input name=\"aid\" type=\"hidden\"value="+idAsString+"></form>")
 
@@ -732,7 +727,6 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 					idAsString := strconv.Itoa(noteid)
 					fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
 						"<textarea name=\"anote\"  cols=\"40\" rows=\"5\">"+note+"</textarea>"+"<br>"+
-
 						"<input name=\"aid\" type=\"hidden\"value="+idAsString+">"+
 						"<input type=\"submit\" value=\"Update Note\">"+
 						"</form>")
@@ -740,7 +734,27 @@ func viewNotes(w http.ResponseWriter, r *http.Request) {
 				}
 			} else if Read == true {
 				fmt.Println("can read note")
-				fmt.Println(NoteId)
+				TheNote, err := db.Query(`SELECT note, username, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				var (
+					note     string
+					username string
+					noteid   int
+				)
+				for TheNote.Next() {
+
+					err = TheNote.Scan(&note, &username, &noteid)
+					fmt.Fprintf(w, "<h1>noteowner "+username+"</h1>")
+					idAsString := strconv.Itoa(noteid)
+					fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
+						"<textarea name=\"anote\"  cols=\"40\" rows=\"5\"disabled>"+note+"</textarea>"+"<br>"+
+						"<input name=\"aid\" type=\"hidden\"value="+idAsString+">"+
+						"</form>")
+
+				}
 			} else {
 				fmt.Println("can't read note")
 				fmt.Println(NoteId)
