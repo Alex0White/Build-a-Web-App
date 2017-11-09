@@ -395,9 +395,10 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 		}else{
 		for rows.Next() {
 			rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
-			if Read == true {
+			if Read == true  {
 
-				TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable`)
+				TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
+		
 		
 
 			}
@@ -410,12 +411,22 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 		option := r.Form["selectid"][0]
 
 
-
+if TheNote == nil{
+	fmt.Println("thenote is empty")
+	t, err := template.ParseFiles("search.html")
+	if err != nil{
+		log.Fatal(err)
+	}
+	t.Execute(w, nil)
+}else{
 		switch option {
 		case "prefix":
-			t, _ := template.ParseFiles("search.html")
+			t, err := template.ParseFiles("search.html")
+			if err != nil{
+				log.Fatal(err)
+			}
 			t.Execute(w, nil)
-				for TheNote.Next() {
+				for TheNote.Next() { //
 					var (
 						note   string
 						noteid int
@@ -431,6 +442,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 					}
 
 				}
+			
 
 			
 
@@ -449,7 +461,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 				if matched {
 
 					fmt.Fprintf(w, "<p>"+note+"</p>")
-			
+					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
 				
 				}
 
@@ -470,6 +482,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 				if matched {
 
 					fmt.Fprintf(w, "<p>"+note+"</p>")
+					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
 				}
 
 			}
@@ -488,6 +501,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 				if matched {
 
 					fmt.Fprintf(w, "<p>"+note+"</p>")
+					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
 				}
 
 			}
@@ -509,6 +523,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 				fmt.Println(len(matches))
 				if len(matches) >= 3 {
 					fmt.Fprintf(w, "<p>"+note+"</p>")
+					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
 				}
 
 			}
@@ -527,6 +542,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 				if matched {
 
 					fmt.Fprintf(w, "<p>"+note+"</p>")
+					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
 				}
 
 			}
@@ -534,6 +550,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 		default:
 			fmt.Println("nothing")
 		}
+	}
 
 	}
 }
