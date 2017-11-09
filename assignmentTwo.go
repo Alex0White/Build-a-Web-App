@@ -16,8 +16,18 @@ import (
 )
 
 func main() {
+	db = OpenDB()
 
-	prepareDatabase() //uncomment to restart the database
+
+	//dbCheck, _ := db.Query("SELECT exists(SELECT userstable")
+	
+	dbCheck, _ := db.Query("SELECT exists(SELECT username FROM UsersTable )") //checks if table has been created
+	dbCheck.Next()
+	var atable bool
+	dbCheck.Scan(&atable)	
+	if atable == false{ // runs if userstable is not present
+	prepareDatabase() 
+	}
 	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
 	http.HandleFunc("/notes", viewNotes)
@@ -26,7 +36,7 @@ func main() {
 	http.HandleFunc("/changepermissions", changeNewPermissions)
 	http.HandleFunc("/notepermissions", notePermissionsView)
 
-	db = OpenDB()
+	
 	err := http.ListenAndServe(":9090", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
@@ -794,46 +804,46 @@ func viewPermissions() {
 
 //sets up all the tables and columns in the database//
 func prepareDatabase() {
-	db, err := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432")
-	err = db.Ping()
+
+	db.Ping()
 	//TempNoteIDTable need to Drop this before userstable as it contains username as foreign key 
-	_, err = db.Exec("DROP TABLE IF EXISTS TempNoteIDTable")
-	if err != nil {
+	_, err := db.Exec("DROP TABLE IF EXISTS TempNoteIDTable")
+	if err != nil{
 		log.Fatal(err)
 	}
 	//userstable
 
 	_, err = db.Exec("DROP TABLE IF EXISTS UsersTable")
-	if err != nil {
+	if err != nil{
 		log.Fatal(err)
 	}
 	_, err = db.Exec("CREATE TABLE UsersTable(username varchar(50), password varchar(50), PRIMARY KEY (username))")
-	if err != nil {
+	if err != nil{
 		log.Fatal(err)
 	}
 
 	//notestable
 	_, err = db.Exec("DROP TABLE IF EXISTS NotesTable")
-	if err != nil {
+	if err != nil{
 		log.Fatal(err)
 	}
 	//TempNoteIDTable
 	_, err = db.Exec("CREATE TABLE TempNoteIDTable(note text, noteId SERIAL, username varchar(50), FOREIGN KEY (username) REFERENCES UsersTable (username))")
-	if err != nil {
+	if err != nil{
 		log.Fatal(err)
 	}
 	_, err = db.Exec("CREATE TABLE NotesTable(noteId SERIAL, username varchar(50), note text)")
-	if err != nil {
+	if err != nil{
 		log.Fatal(err)
 	}
 	//permissions table
 	_, err = db.Exec("DROP TABLE IF EXISTS PermissionsTable ")
-	if err != nil {
+	if err != nil{
 		log.Fatal(err)
 	}
 
 	_, err = db.Exec("CREATE TABLE PermissionsTable(noteId int, username varchar(50), read boolean, write boolean, owner boolean)")
-	if err != nil {
+	if err != nil{
 		log.Fatal(err)
 	}
 
