@@ -20,7 +20,7 @@ func main() {
 
 
 	//dbCheck, _ := db.Query("SELECT exists(SELECT userstable")
-	
+	//prepareDatabase() 
 	dbCheck, _ := db.Query("SELECT exists(SELECT username FROM UsersTable )") //checks if table has been created
 	dbCheck.Next()
 	var atable bool
@@ -401,8 +401,8 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
 			if Read == true  {
-
-				TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
+				TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable`)
+				//TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
 		
 		
 
@@ -426,6 +426,7 @@ if TheNote == nil{
 }else{
 		switch option {
 		case "prefix":
+			fmt.Println("prefix bit")
 			t, err := template.ParseFiles("search.html")
 			if err != nil{
 				log.Fatal(err)
@@ -437,7 +438,7 @@ if TheNote == nil{
 						noteid int
 					)
 					TheNote.Scan(&note, &noteid)
-
+					fmt.Println(note)
 					matched, _ = regexp.MatchString("\\. "+userInput+"|^"+userInput, note)
 
 					if matched {
