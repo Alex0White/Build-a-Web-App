@@ -45,7 +45,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	var loggedin = false
 
 	if r.Method == "GET" { //displays the page  
-		t, _ := template.ParseFiles("login.html")
+		t, _ := template.ParseFiles("html/login.html")
 		t.Execute(w, nil)
 	} else {
 
@@ -77,7 +77,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 						fmt.Println(err)
 					}
 
-					t, _ := template.ParseFiles("notes.html")
+					t, _ := template.ParseFiles("html/notes.html")
 					t.Execute(w, nil)
 
 				} else {
@@ -88,7 +88,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 		}
 		if !loggedin {
-			t, _ := template.ParseFiles("login.html")
+			t, _ := template.ParseFiles("html/login.html")
 			t.Execute(w, nil)
 		}
 
@@ -220,7 +220,7 @@ func notePermissionsView(w http.ResponseWriter, r *http.Request) { //this adds c
 	r.ParseForm()
 
 	if r.Method == "GET" {
-		t, _ := template.ParseFiles("notePermissions.html")
+		t, _ := template.ParseFiles("html/notePermissions.html")
 
 		t.Execute(w, nil)
 
@@ -237,7 +237,7 @@ func notePermissionsView(w http.ResponseWriter, r *http.Request) { //this adds c
 	}
 	fmt.Println("this (note PermisssionsView)is note id of created note: ", i)
 	currentNoteID = i
-	t, _ := template.ParseFiles("notepermissions.html")
+	t, _ := template.ParseFiles("html/notepermissions.html")
 	t.Execute(w, nil)
 	if r.Form.Get("Add Permissions") == "Add or Remove Permissions" {
 		fmt.Println("add permissions button works")
@@ -316,7 +316,7 @@ func notePermissions(note string, noteId int, db *sql.DB) notePermissionTemp {
 }
 func addNewUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		t, _ := template.ParseFiles("addaccount.html")
+		t, _ := template.ParseFiles("html/addaccount.html")
 		t.Execute(w, nil)
 	} else {
 
@@ -324,10 +324,10 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 
 		takenUser := addUser(r.Form["username"][0], r.Form["password"][0], db)
 		if takenUser {
-			t, _ := template.ParseFiles("addaccount.html")
+			t, _ := template.ParseFiles("html/addaccount.html")
 			t.Execute(w, nil)
 		} else {
-			t, _ := template.ParseFiles("login.html")
+			t, _ := template.ParseFiles("html/login.html")
 			t.Execute(w, nil)
 		}
 
@@ -342,7 +342,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {//searching notes usin
 	r.ParseForm()
 
 	if r.Method == "GET" {
-		t, _ := template.ParseFiles("search.html")
+		t, _ := template.ParseFiles("html/search.html")
 
 		t.Execute(w, nil)
 	} else {
@@ -387,7 +387,7 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {//searching notes usin
 
 if TheNote == nil{
 	fmt.Println("thenote is empty")
-	t, err := template.ParseFiles("search.html")
+	t, err := template.ParseFiles("html/search.html")
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -396,7 +396,7 @@ if TheNote == nil{
 		switch option { //shorten this so there is less duplicated code
 		case "prefix":
 			fmt.Println("prefix bit")
-			t, err := template.ParseFiles("search.html")
+			t, err := template.ParseFiles("html/search.html")
 			if err != nil{
 				log.Fatal(err)
 			}
@@ -422,7 +422,7 @@ if TheNote == nil{
 			
 
 		case "suffix":
-			t, _ := template.ParseFiles("search.html")
+			t, _ := template.ParseFiles("html/search.html")
 			t.Execute(w, nil)
 			for TheNote.Next() {
 				var (
@@ -443,7 +443,7 @@ if TheNote == nil{
 			}
 
 		case "phoneNumber":
-			t, _ := template.ParseFiles("search.html")
+			t, _ := template.ParseFiles("html/search.html")
 			t.Execute(w, nil)
 			for TheNote.Next() {
 				var (
@@ -462,7 +462,7 @@ if TheNote == nil{
 
 			}
 		case "email":
-			t, _ := template.ParseFiles("search.html")
+			t, _ := template.ParseFiles("html/search.html")
 			t.Execute(w, nil)
 			for TheNote.Next() {
 				var (
@@ -482,7 +482,7 @@ if TheNote == nil{
 			}
 
 		case "text":
-			t, _ := template.ParseFiles("search.html")
+			t, _ := template.ParseFiles("html/search.html")
 			t.Execute(w, nil)
 			for TheNote.Next() {
 				var (
@@ -504,7 +504,7 @@ if TheNote == nil{
 			}
 			fmt.Println("Text")
 		case "capitals":
-			t, _ := template.ParseFiles("search.html")
+			t, _ := template.ParseFiles("html/search.html")
 			t.Execute(w, nil)
 			for TheNote.Next() {
 				var (
@@ -543,12 +543,12 @@ func addNewNote(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 
-		t, _ := template.ParseFiles("createnote.html")
+		t, _ := template.ParseFiles("html/createnote.html")
 		t.Execute(w, nil)
 	} else {
 		addNote(username.Value, r.Form["note"][0], db)
 
-		t, _ := template.ParseFiles("createnote.html")
+		t, _ := template.ParseFiles("html/createnote.html")
 		t.Execute(w, nil)
 
 		
@@ -588,7 +588,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the 
 	fmt.Println("method:", r.Method) //get request method
 
 	if r.Method == "GET" {
-		t, _ := template.ParseFiles("notes.html")
+		t, _ := template.ParseFiles("html/notes.html")
 
 		t.Execute(w, nil)
 
@@ -609,14 +609,14 @@ func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the 
 		if r.Form.Get("Delete Note") == "Delete Note" {
 
 			deleteNote(username.Value, i, db)
-			t, _ := template.ParseFiles("notes.html")
+			t, _ := template.ParseFiles("html/notes.html")
 
 			t.Execute(w, nil)
 
 		} else {
 			updateNote(n, i, db)
 			
-			t, _ := template.ParseFiles("notes.html")
+			t, _ := template.ParseFiles("html/notes.html")
 
 			t.Execute(w, nil)
 		}
