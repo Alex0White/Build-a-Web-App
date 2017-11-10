@@ -9,25 +9,12 @@ import (
 	"net/http"
 	"strconv"
 	_ "sync"
-
 	"regexp"
-
 	_ "github.com/lib/pq"
 )
 
 func main() {
 	db = OpenDB()
-
-
-	//dbCheck, _ := db.Query("SELECT exists(SELECT userstable")
-	//prepareDatabase() 
-	dbCheck, _ := db.Query("SELECT exists(SELECT username FROM UsersTable )") //checks if table has been created
-	dbCheck.Next()
-	var atable bool
-	dbCheck.Scan(&atable)	
-	if atable == false{ // runs if userstable is not present
-	prepareDatabase() 
-	}
 	http.HandleFunc("/", login)
 	http.HandleFunc("/adduser", addNewUser)
 	http.HandleFunc("/notes", viewNotes)
@@ -36,8 +23,7 @@ func main() {
 	http.HandleFunc("/changepermissions", changeNewPermissions)
 	http.HandleFunc("/notepermissions", notePermissionsView)
 
-	
-	err := http.ListenAndServe(":9090", nil)
+	err := http.ListenAndServe(":9090", nil) //listen on localhost:9090
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
@@ -46,7 +32,7 @@ func main() {
 
 var db *sql.DB
 
-func OpenDB() *sql.DB {
+func OpenDB() *sql.DB { //opens the database
 	db, err := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432 ")
 	if err != nil {
 		log.Fatal(err)
@@ -58,7 +44,7 @@ func OpenDB() *sql.DB {
 func login(w http.ResponseWriter, r *http.Request) {
 	var loggedin = false
 
-	if r.Method == "GET" {
+	if r.Method == "GET" { //displays the page  
 		t, _ := template.ParseFiles("login.html")
 		t.Execute(w, nil)
 	} else {
@@ -74,7 +60,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 			Password string
 		)
 
-		for rows.Next() {
+		for rows.Next() { //validating login
 
 			err = rows.Scan(&Username, &Password)
 			if r.Form["username"][0] == Username {
@@ -83,7 +69,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 					fmt.Println("Logged in!")
 					cookie1 := &http.Cookie{Name: "username", Value: (Username), HttpOnly: false}
 					http.SetCookie(w, cookie1)
-					var cookie, err = r.Cookie("username")
+					var cookie, err = r.Cookie("username") //setting the cookie so the users details can be used on the other pages
 					if err == nil {
 						fmt.Println(cookie.Value)
 
@@ -102,7 +88,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 		}
 		if !loggedin {
-			fmt.Println("failed")
 			t, _ := template.ParseFiles("login.html")
 			t.Execute(w, nil)
 		}
@@ -141,10 +126,7 @@ func deleteNote(username string, noteid int, db *sql.DB) {
 	db.Exec("DELETE FROM NotesTable WHERE noteid = $1 AND username = $2", noteid, username)
 }
 
-func addUser(username string, password string, db *sql.DB) bool { //adds a new user to the database
-
-	//check if username is already taken
-
+func addUser(username string, password string, db *sql.DB) bool { //adds a new user to the database. 
 	testuser := username
 
 	user, err := db.Query("SELECT exists(SELECT username FROM UsersTable WHERE username = $1)", testuser)
@@ -169,7 +151,7 @@ func addUser(username string, password string, db *sql.DB) bool { //adds a new u
 
 }
 
-func changePermissions(noteId int, username string, read bool, write bool, owner bool, db *sql.DB) { //needs to be change permissions, if the user is already associated with the note
+func changePermissions(noteId int, username string, read bool, write bool, owner bool, db *sql.DB) {
 	updated := false
 
 	rows, err := db.Query("SELECT * FROM PermissionsTable ")
@@ -204,7 +186,6 @@ func changePermissions(noteId int, username string, read bool, write bool, owner
 
 	}
 	if !updated {
-		fmt.Println("wat up")
 		_, err = db.Exec("INSERT INTO PermissionsTable(noteid, username, read, write, owner) VALUES($1,$2,$3,$4,$5)", noteId, username, read, write, owner)
 		if err != nil {
 			log.Fatal(err)
@@ -264,19 +245,17 @@ func notePermissionsView(w http.ResponseWriter, r *http.Request) { //this adds c
 		read := false
 		if r.Form["WritePriv"] != nil {
 			if r.Form["WritePriv"][0] == "Write" {
-				fmt.Println("WriteCheck box workked")
 				write = true
 			}
 		}
 		if r.Form["ReadPriv"] != nil {
 			if r.Form["ReadPriv"][0] == "Read" {
-				fmt.Println("read Checkbox workked")
 				read = true
 			}
 		}
 		if read == true || write == true {
 			theUser := r.Form["addthisuser"][0]
-			fmt.Println("this is the currnet note id: ", currentNoteID)
+
 
 			changePermissions(currentNoteID, theUser, read, write, false, db)
 		}
@@ -352,27 +331,21 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 			t.Execute(w, nil)
 		}
 
-		//fmt.Println("password:", r.Form["password"])
-
-		//defer r.Body.Close()
-
 	}
 }
 
-func searchNotes(w http.ResponseWriter, r *http.Request) {
+func searchNotes(w http.ResponseWriter, r *http.Request) {//searching notes using regex
 	var username, _ = r.Cookie("username")
 	var TheNote *sql.Rows
 	var matched bool
 
 	r.ParseForm()
 
-	//fmt.Println("method:", r.Method) //get request method
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("search.html")
 
 		t.Execute(w, nil)
 	} else {
-		//db, err := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable")
 		tempNoteRows, _ := db.Query(`SELECT * FROM tempnoteidtable WHERE username = $1`, username.Value)
 		var (
 			tempNote string
@@ -402,10 +375,6 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {
 			rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
 			if Read == true  {
 				TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable`)
-				//TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable WHERE noteid = $1`, NoteId)
-		
-		
-
 			}
 		}
 		db.Exec(`DELETE FROM tempnoteidtable WHERE username = $1`, username.Value)
@@ -424,7 +393,7 @@ if TheNote == nil{
 	}
 	t.Execute(w, nil)
 }else{
-		switch option {
+		switch option { //shorten this so there is less duplicated code
 		case "prefix":
 			fmt.Println("prefix bit")
 			t, err := template.ParseFiles("search.html")
@@ -432,7 +401,7 @@ if TheNote == nil{
 				log.Fatal(err)
 			}
 			t.Execute(w, nil)
-				for TheNote.Next() { //
+				for TheNote.Next() {
 					var (
 						note   string
 						noteid int
@@ -526,7 +495,7 @@ if TheNote == nil{
 
 				matches := match.FindAllStringIndex(note, -1)
 
-				fmt.Println(len(matches))
+				
 				if len(matches) >= 3 {
 					fmt.Fprintf(w, "<p>"+note+"</p>")
 					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
@@ -554,7 +523,7 @@ if TheNote == nil{
 			}
 
 		default:
-			fmt.Println("nothing")
+			
 		}
 	}
 
@@ -582,9 +551,8 @@ func addNewNote(w http.ResponseWriter, r *http.Request) {
 		t, _ := template.ParseFiles("createnote.html")
 		t.Execute(w, nil)
 
-		viewPermissions()
+		
 	}
-
 }
 func changeNewPermissions(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
@@ -602,31 +570,8 @@ func changeNewPermissions(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	changePermissions(data.NoteId, data.Username, data.Read, data.Write, data.Owner, db)
-
 	defer r.Body.Close()
 
-}
-
-func viewUsers(db *sql.DB) {
-	//db, _ := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432")
-	rows, err := db.Query("SELECT * FROM UsersTable ")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var (
-		Username string
-		Password string
-	)
-
-	for rows.Next() {
-
-		err = rows.Scan(&Username, &Password)
-		fmt.Println(Username)
-		fmt.Println(Password)
-		//fmt.Println(err)
-
-	}
 }
 
 var currentNoteID int
@@ -773,96 +718,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the 
 
 		}
 	}
-
-}
-func viewPermissions() {
-
-	rows, err := db.Query("SELECT * FROM PermissionsTable ")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var (
-		NoteId   int
-		Username string
-		Read     bool
-		Write    bool
-		Owner    bool
-	)
-
-	for rows.Next() {
-
-		err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
-		fmt.Println(NoteId)
-		fmt.Println(Username)
-		fmt.Println(Read)
-		fmt.Println(Write)
-		fmt.Println(Owner)
-
-	}
-
 }
 
-//sets up all the tables and columns in the database//
-func prepareDatabase() {
 
-	db.Ping()
-	//TempNoteIDTable need to Drop this before userstable as it contains username as foreign key 
-	_, err := db.Exec("DROP TABLE IF EXISTS TempNoteIDTable")
-	if err != nil{
-		log.Fatal(err)
-	}
-	//userstable
 
-	_, err = db.Exec("DROP TABLE IF EXISTS UsersTable")
-	if err != nil{
-		log.Fatal(err)
-	}
-	_, err = db.Exec("CREATE TABLE UsersTable(username varchar(50), password varchar(50), PRIMARY KEY (username))")
-	if err != nil{
-		log.Fatal(err)
-	}
-
-	//notestable
-	_, err = db.Exec("DROP TABLE IF EXISTS NotesTable")
-	if err != nil{
-		log.Fatal(err)
-	}
-	//TempNoteIDTable
-	_, err = db.Exec("CREATE TABLE TempNoteIDTable(note text, noteId SERIAL, username varchar(50), FOREIGN KEY (username) REFERENCES UsersTable (username))")
-	if err != nil{
-		log.Fatal(err)
-	}
-	_, err = db.Exec("CREATE TABLE NotesTable(noteId SERIAL, username varchar(50), note text)")
-	if err != nil{
-		log.Fatal(err)
-	}
-	//permissions table
-	_, err = db.Exec("DROP TABLE IF EXISTS PermissionsTable ")
-	if err != nil{
-		log.Fatal(err)
-	}
-
-	_, err = db.Exec("CREATE TABLE PermissionsTable(noteId int, username varchar(50), read boolean, write boolean, owner boolean)")
-	if err != nil{
-		log.Fatal(err)
-	}
-
-}
-
-type User struct {
-	username string
-	password string
-}
-type Note struct {
-	username string
-	noteId   float64
-	note     string
-}
-type Permissions struct {
-	noteId   int
-	username string
-	read     bool
-	write    bool
-	owner    bool
-}
