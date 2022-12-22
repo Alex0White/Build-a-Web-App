@@ -7,9 +7,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	_ "sync"
-	"regexp"
 	_ "github.com/lib/pq"
 )
 
@@ -33,7 +33,7 @@ func main() {
 var db *sql.DB
 
 func OpenDB() *sql.DB { //opens the database
-	db, err := sql.Open("postgres", "user=postgres password=password dbname=webAppDatabase sslmode=disable port=5432 ")
+	db, err := sql.Open("postgres", "user=postgres password=SyYQm3YfmlHMc8HSnEOF dbname=postgres sslmode=disable port=5432 ")
 	if err != nil {
 		log.Fatal(err)
 		fmt.Println("Someting went wrong while opening the database")
@@ -44,7 +44,7 @@ func OpenDB() *sql.DB { //opens the database
 func login(w http.ResponseWriter, r *http.Request) {
 	var loggedin = false
 
-	if r.Method == "GET" { //displays the page  
+	if r.Method == "GET" { //displays the page
 		t, _ := template.ParseFiles("html/login.html")
 		t.Execute(w, nil)
 	} else {
@@ -61,7 +61,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 		)
 
 		for rows.Next() { //validating login
-
 			err = rows.Scan(&Username, &Password)
 			if r.Form["username"][0] == Username {
 				if r.Form["password"][0] == Password {
@@ -85,13 +84,11 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 				}
 			}
-
 		}
 		if !loggedin {
 			t, _ := template.ParseFiles("html/login.html")
 			t.Execute(w, nil)
 		}
-
 	}
 }
 
@@ -126,7 +123,7 @@ func deleteNote(username string, noteid int, db *sql.DB) {
 	db.Exec("DELETE FROM NotesTable WHERE noteid = $1 AND username = $2", noteid, username)
 }
 
-func addUser(username string, password string, db *sql.DB) bool { //adds a new user to the database. 
+func addUser(username string, password string, db *sql.DB) bool { //adds a new user to the database.
 	testuser := username
 
 	user, err := db.Query("SELECT exists(SELECT username FROM UsersTable WHERE username = $1)", testuser)
@@ -183,7 +180,6 @@ func changePermissions(noteId int, username string, read bool, write bool, owner
 			updated = true
 
 		}
-
 	}
 	if !updated {
 		_, err = db.Exec("INSERT INTO PermissionsTable(noteid, username, read, write, owner) VALUES($1,$2,$3,$4,$5)", noteId, username, read, write, owner)
@@ -211,7 +207,7 @@ type notePermissionTemp struct {
 	permissions []permission
 }
 
-func notePermissionsView(w http.ResponseWriter, r *http.Request) { //this adds content to the notepermissions page. This content shows the notes that the owners accout has created and gives them options to add permissions to their notes  
+func notePermissionsView(w http.ResponseWriter, r *http.Request) { //this adds content to the notepermissions page. This content shows the notes that the owners account has created and gives them options to add permissions to their notes
 	var username, err = r.Cookie("username")
 	if err != nil {
 		log.Fatal(err)
@@ -221,9 +217,7 @@ func notePermissionsView(w http.ResponseWriter, r *http.Request) { //this adds c
 
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("html/notePermissions.html")
-
 		t.Execute(w, nil)
-
 	}
 
 	idstring := r.Form["aid"][0]
@@ -255,7 +249,6 @@ func notePermissionsView(w http.ResponseWriter, r *http.Request) { //this adds c
 		}
 		if read == true || write == true {
 			theUser := r.Form["addthisuser"][0]
-
 
 			changePermissions(currentNoteID, theUser, read, write, false, db)
 		}
@@ -334,7 +327,7 @@ func addNewUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func searchNotes(w http.ResponseWriter, r *http.Request) {//searching notes using regex
+func searchNotes(w http.ResponseWriter, r *http.Request) { //searching notes using regex
 	var username, _ = r.Cookie("username")
 	var TheNote *sql.Rows
 	var matched bool
@@ -348,10 +341,9 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {//searching notes usin
 	} else {
 		tempNoteRows, _ := db.Query(`SELECT * FROM tempnoteidtable WHERE username = $1`, username.Value)
 		var (
-			tempNote string
-			tempNoteid int
+			tempNote     string
+			tempNoteid   int
 			tempUsername string
-
 		)
 		rows, _ := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value)
 		var (
@@ -361,46 +353,45 @@ func searchNotes(w http.ResponseWriter, r *http.Request) {//searching notes usin
 			Write    bool
 			Owner    bool
 		)
-		if r.Form.Get("research") == "Search Results"{
-			for tempNoteRows.Next(){
-			 tempNoteRows.Scan(&tempNote, &tempNoteid, &tempUsername)
-			 if tempUsername == username.Value{
-			 TheNote, _ = db.Query(`SELECT note, noteid FROM tempnoteidtable`)
-			 fmt.Print("it lives")
-			 }
+		if r.Form.Get("research") == "Search Results" {
+			for tempNoteRows.Next() {
+				tempNoteRows.Scan(&tempNote, &tempNoteid, &tempUsername)
+				if tempUsername == username.Value {
+					TheNote, _ = db.Query(`SELECT note, noteid FROM tempnoteidtable`)
+					fmt.Print("it lives")
+				}
 			}
 			db.Exec(`DELETE FROM tempnoteidtable WHERE username = $1`, username.Value)
-		}else{
-		for rows.Next() {
-			rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
-			if Read == true  {
-				TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable`)
+		} else {
+			for rows.Next() {
+				rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
+				if Read == true {
+					TheNote, _ = db.Query(`SELECT note, noteid FROM NotesTable`)
+				}
 			}
+			db.Exec(`DELETE FROM tempnoteidtable WHERE username = $1`, username.Value)
 		}
-		db.Exec(`DELETE FROM tempnoteidtable WHERE username = $1`, username.Value)
-	}
 		userInput := r.Form["textboxid"][0]
 		matched = false
 		fmt.Println(userInput)
 		option := r.Form["selectid"][0]
 
-
-if TheNote == nil{
-	fmt.Println("thenote is empty")
-	t, err := template.ParseFiles("html/search.html")
-	if err != nil{
-		log.Fatal(err)
-	}
-	t.Execute(w, nil)
-}else{
-		switch option { //shorten this so there is less duplicated code
-		case "prefix":
-			fmt.Println("prefix bit")
+		if TheNote == nil {
+			fmt.Println("thenote is empty")
 			t, err := template.ParseFiles("html/search.html")
-			if err != nil{
+			if err != nil {
 				log.Fatal(err)
 			}
 			t.Execute(w, nil)
+		} else {
+			switch option { //shorten this so there is less duplicated code
+			case "prefix":
+				fmt.Println("prefix bit")
+				t, err := template.ParseFiles("html/search.html")
+				if err != nil {
+					log.Fatal(err)
+				}
+				t.Execute(w, nil)
 				for TheNote.Next() {
 					var (
 						note   string
@@ -417,115 +408,111 @@ if TheNote == nil{
 					}
 
 				}
-			
 
-			
+			case "suffix":
+				t, _ := template.ParseFiles("html/search.html")
+				t.Execute(w, nil)
+				for TheNote.Next() {
+					var (
+						note   string
+						noteid int
+					)
+					TheNote.Scan(&note, &noteid)
 
-		case "suffix":
-			t, _ := template.ParseFiles("html/search.html")
-			t.Execute(w, nil)
-			for TheNote.Next() {
-				var (
-					note   string
-					noteid int
-				)
-				TheNote.Scan(&note, &noteid)
+					matched, _ = regexp.MatchString(userInput+"\\.", note)
 
-				matched, _ = regexp.MatchString(userInput+"\\.", note)
+					if matched {
 
-				if matched {
+						fmt.Fprintf(w, "<p>"+note+"</p>")
+						db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
 
-					fmt.Fprintf(w, "<p>"+note+"</p>")
-					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
-				
+					}
+
 				}
 
-			}
+			case "phoneNumber":
+				t, _ := template.ParseFiles("html/search.html")
+				t.Execute(w, nil)
+				for TheNote.Next() {
+					var (
+						note   string
+						noteid int
+					)
+					TheNote.Scan(&note, &noteid)
 
-		case "phoneNumber":
-			t, _ := template.ParseFiles("html/search.html")
-			t.Execute(w, nil)
-			for TheNote.Next() {
-				var (
-					note   string
-					noteid int
-				)
-				TheNote.Scan(&note, &noteid)
+					matched, _ = regexp.MatchString("\\D"+userInput+"\\d", note)
 
-				matched, _ = regexp.MatchString("\\D"+userInput+"\\d", note)
+					if matched {
 
-				if matched {
+						fmt.Fprintf(w, "<p>"+note+"</p>")
+						db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
+					}
 
-					fmt.Fprintf(w, "<p>"+note+"</p>")
-					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
+				}
+			case "email":
+				t, _ := template.ParseFiles("html/search.html")
+				t.Execute(w, nil)
+				for TheNote.Next() {
+					var (
+						note   string
+						noteid int
+					)
+					TheNote.Scan(&note, &noteid)
+
+					matched, _ = regexp.MatchString("\\w+@"+userInput+"+.*\\.\\w", note)
+
+					if matched {
+
+						fmt.Fprintf(w, "<p>"+note+"</p>")
+						db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
+					}
+
 				}
 
-			}
-		case "email":
-			t, _ := template.ParseFiles("html/search.html")
-			t.Execute(w, nil)
-			for TheNote.Next() {
-				var (
-					note   string
-					noteid int
-				)
-				TheNote.Scan(&note, &noteid)
+			case "text":
+				t, _ := template.ParseFiles("html/search.html")
+				t.Execute(w, nil)
+				for TheNote.Next() {
+					var (
+						note   string
+						noteid int
+					)
+					TheNote.Scan(&note, &noteid)
 
-				matched, _ = regexp.MatchString("\\w+@"+userInput+"+.*\\.\\w", note)
+					match := regexp.MustCompile("meeting|minutes|agenda|action|attendees|apologies")
 
-				if matched {
+					matches := match.FindAllStringIndex(note, -1)
 
-					fmt.Fprintf(w, "<p>"+note+"</p>")
-					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
+					if len(matches) >= 3 {
+						fmt.Fprintf(w, "<p>"+note+"</p>")
+						db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
+					}
+
+				}
+				fmt.Println("Text")
+			case "capitals":
+				t, _ := template.ParseFiles("html/search.html")
+				t.Execute(w, nil)
+				for TheNote.Next() {
+					var (
+						note   string
+						noteid int
+					)
+					TheNote.Scan(&note, &noteid)
+
+					matched, _ = regexp.MatchString("([A-Z]){3,}", note)
+					if matched {
+
+						fmt.Fprintf(w, "<p>"+note+"</p>")
+						db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
+					}
+
 				}
 
-			}
-
-		case "text":
-			t, _ := template.ParseFiles("html/search.html")
-			t.Execute(w, nil)
-			for TheNote.Next() {
-				var (
-					note   string
-					noteid int
-				)
-				TheNote.Scan(&note, &noteid)
-
-				match := regexp.MustCompile("meeting|minutes|agenda|action|attendees|apologies")
-
-				matches := match.FindAllStringIndex(note, -1)
-
-				
-				if len(matches) >= 3 {
-					fmt.Fprintf(w, "<p>"+note+"</p>")
-					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
-				}
+			default:
 
 			}
-			fmt.Println("Text")
-		case "capitals":
-			t, _ := template.ParseFiles("html/search.html")
-			t.Execute(w, nil)
-			for TheNote.Next() {
-				var (
-					note   string
-					noteid int
-				)
-				TheNote.Scan(&note, &noteid)
-
-				matched, _ = regexp.MatchString("([A-Z]){3,}", note)
-				if matched {
-
-					fmt.Fprintf(w, "<p>"+note+"</p>")
-					db.Exec("INSERT INTO TempNoteIDTable(note, noteid, username) VALUES($1,$2,$3)", note, noteid, username.Value)
-				}
-
-			}
-
-		default:
-			
 		}
-	}
 
 	}
 }
@@ -551,7 +538,6 @@ func addNewNote(w http.ResponseWriter, r *http.Request) {
 		t, _ := template.ParseFiles("html/createnote.html")
 		t.Execute(w, nil)
 
-		
 	}
 }
 func changeNewPermissions(w http.ResponseWriter, r *http.Request) {
@@ -577,7 +563,7 @@ func changeNewPermissions(w http.ResponseWriter, r *http.Request) {
 var currentNoteID int
 var currentNote string
 
-func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the notes.html page. Shows notes user created and lets them update delete and change permissions. 
+func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the notes.html page. Shows notes user created and lets them update delete and change permissions.
 
 	var username, err = r.Cookie("username")
 	if err != nil {
@@ -615,13 +601,13 @@ func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the 
 
 		} else {
 			updateNote(n, i, db)
-			
+
 			t, _ := template.ParseFiles("html/notes.html")
 
 			t.Execute(w, nil)
 		}
 	}
-	if r.Form.Get("Edit Permissions") != "Edit Permissions" {  
+	if r.Form.Get("Edit Permissions") != "Edit Permissions" {
 
 		rows, _ := db.Query(`SELECT * FROM PermissionsTable WHERE username = $1`, username.Value) // finds all the permissions the user is assoiated with and adds them to the rows variable
 		var (
@@ -632,7 +618,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the 
 			Owner    bool
 		)
 
-		for rows.Next() { // goes through each permission in rows and gets the notes in the notestable associated with those permissions. Then displays the notes according to what permissions they had.    
+		for rows.Next() { // goes through each permission in rows and gets the notes in the notestable associated with those permissions. Then displays the notes according to what permissions they had.
 			err = rows.Scan(&NoteId, &Username, &Read, &Write, &Owner)
 			if Read == true && Write == true && Owner == true { // for notes that are created by the user
 
@@ -649,7 +635,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the 
 				for TheNote.Next() {
 
 					err = TheNote.Scan(&note, &username, &noteid)
-					fmt.Fprintf(w, "<h1>noteowner "+username+"</h1>")
+					fmt.Fprintf(w, "<h1>note owner "+username+"</h1>")
 					idAsString := strconv.Itoa(noteid)
 
 					fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
@@ -678,7 +664,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the 
 				for TheNote.Next() {
 
 					err = TheNote.Scan(&note, &username, &noteid)
-					fmt.Fprintf(w, "<h1>noteowner "+username+"</h1>")
+					fmt.Fprintf(w, "<h1>note owner "+username+"</h1>")
 					idAsString := strconv.Itoa(noteid)
 					fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
 						"<textarea name=\"anote\"  cols=\"40\" rows=\"5\">"+note+"</textarea>"+"<br>"+
@@ -703,7 +689,7 @@ func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the 
 				for TheNote.Next() {
 
 					err = TheNote.Scan(&note, &username, &noteid)
-					fmt.Fprintf(w, "<h1>noteowner "+username+"</h1>")
+					fmt.Fprintf(w, "<h1>note owner "+username+"</h1>")
 					idAsString := strconv.Itoa(noteid)
 					fmt.Fprintf(w, "<form action=\"/notes\" method=\"post\">"+
 						"<textarea name=\"anote\"  cols=\"40\" rows=\"5\"disabled>"+note+"</textarea>"+"<br>"+
@@ -719,6 +705,3 @@ func viewNotes(w http.ResponseWriter, r *http.Request) { // adds content to the 
 		}
 	}
 }
-
-
-
