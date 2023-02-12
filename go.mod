@@ -1,4 +1,4 @@
-module src/myapp/NotesApplication
+module NotesApplication
 
 go 1.19
 
